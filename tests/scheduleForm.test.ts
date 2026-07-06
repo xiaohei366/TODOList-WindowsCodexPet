@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'vitest';
 import {
+  buildDeadlineInput,
   buildScheduleInput,
   createDefaultScheduleForm,
   createEmptyScheduleForm,
   formatScheduleSummary,
+  getDeadlineFormMaxDay,
   getScheduleFormMaxDay,
   weekdayOptions
 } from '../src/renderer/src/scheduleForm';
@@ -106,5 +108,40 @@ describe('schedule form helpers', () => {
         updatedAt: '2026-05-28T00:00:00.000Z'
       })
     ).toBe('2026-05-28 15:30');
+  });
+});
+
+describe('deadline form helpers', () => {
+  test('returns undefined when all date parts are empty (clears the deadline)', () => {
+    expect(buildDeadlineInput({ year: '', month: '', day: '' })).toBeUndefined();
+  });
+
+  test('normalizes a valid date into a zero-padded YYYY-MM-DD string', () => {
+    expect(buildDeadlineInput({ year: '2026', month: '4', day: '9' })).toBe('2026-04-09');
+  });
+
+  test('rejects partial date input with a dateRequired message', () => {
+    expect(() => buildDeadlineInput({ year: '2026', month: '', day: '9' })).toThrow('请填写完整的年、月、日。');
+    expect(() => buildDeadlineInput({ year: '2026', month: '4', day: '' })).toThrow('请填写完整的年、月、日。');
+  });
+
+  test('rejects impossible calendar dates for the deadline', () => {
+    expect(() => buildDeadlineInput({ year: '2026', month: '2', day: '29' })).toThrow('日期需为 1-28。');
+    expect(() => buildDeadlineInput({ year: '2026', month: '13', day: '1' })).toThrow('月份需为 1-12。');
+  });
+
+  test('reports deadline validation errors in English', () => {
+    expect(() => buildDeadlineInput({ year: '2026', month: '2', day: '29' }, new Date(), 'en-US')).toThrow(
+      'Day must be 1-28.'
+    );
+    expect(() => buildDeadlineInput({ year: '2026', month: '', day: '9' }, new Date(), 'en-US')).toThrow(
+      'Please fill in the full year, month, and day.'
+    );
+  });
+
+  test('computes max day for the deadline form from year and month', () => {
+    expect(getDeadlineFormMaxDay({ year: '2026', month: '2', day: '' })).toBe(28);
+    expect(getDeadlineFormMaxDay({ year: '2028', month: '2', day: '' })).toBe(29);
+    expect(getDeadlineFormMaxDay({ year: '', month: '', day: '' }, new Date(2026, 0, 15))).toBe(31);
   });
 });

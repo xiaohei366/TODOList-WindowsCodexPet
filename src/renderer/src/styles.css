@@ -570,6 +570,12 @@ button {
   border-color: #287a61;
 }
 
+.todo-deadline-error {
+  color: #bf3b30;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .todo-deadline-year {
   width: 48px;
 }

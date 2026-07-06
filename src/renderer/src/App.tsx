@@ -5,9 +5,11 @@ import { type AppLanguage, type I18nKey, defaultLanguage, t } from '../../shared
 import { getAnimationSpec, getInteractivePetState, getPetSpriteStyle, getTodoDrivenPetState } from './petAnimation';
 import { clampPetUiScale, defaultPetUiScale, getPetUiScaleFromResizeDrag } from './petScale';
 import {
+  buildDeadlineInput,
   buildScheduleInput,
   createDefaultScheduleForm,
   formatScheduleSummary,
+  getDeadlineFormMaxDay,
   getScheduleFormMaxDay,
   scheduleRuleToForm,
   type ScheduleFormState,
@@ -52,9 +54,11 @@ export function App(): ReactElement {
   const [editingNotesTodo, setEditingNotesTodo] = useState<{ id: string; notes: string } | null>(null);
   const [editingTagTodo, setEditingTagTodo] = useState<{ id: string; tag: string } | null>(null);
   const [deadlineFormTodo, setDeadlineFormTodo] = useState<{ id: string; year: string; month: string; day: string } | null>(null);
+  const [deadlineFormError, setDeadlineFormError] = useState('');
   const [subTaskComposerParent, setSubTaskComposerParent] = useState<string | null>(null);
   const [newSubTaskText, setNewSubTaskText] = useState('');
   const [subTaskDeadlineForm, setSubTaskDeadlineForm] = useState<{ parentId: string; subTaskId: string; year: string; month: string; day: string } | null>(null);
+  const [subTaskDeadlineFormError, setSubTaskDeadlineFormError] = useState('');
   const [draggingSubTask, setDraggingSubTask] = useState<{ parentId: string; subTaskId: string } | null>(null);
   const [collapsedParents, setCollapsedParents] = useState<Set<string>>(() => {
     try {
@@ -299,6 +303,8 @@ export function App(): ReactElement {
     [todos]
   );
   const scheduleMaxDay = getScheduleFormMaxDay(scheduleForm);
+  const deadlineMaxDay = deadlineFormTodo ? getDeadlineFormMaxDay(deadlineFormTodo) : 31;
+  const subTaskDeadlineMaxDay = subTaskDeadlineForm ? getDeadlineFormMaxDay(subTaskDeadlineForm) : 31;
   const basePetState = getTodoDrivenPetState(todos);
   const petState =
     transientState ??
@@ -455,6 +461,7 @@ export function App(): ReactElement {
       setComposerOpen(false);
       const today = new Date();
       const parts = item.deadline?.split('-') ?? [];
+      setDeadlineFormError('');
       setDeadlineFormTodo({
         id: item.id,
         year: parts[0] ?? String(today.getFullYear()),
@@ -540,15 +547,15 @@ export function App(): ReactElement {
     event.preventDefault();
     const form = deadlineFormTodo;
     if (!form) return;
-    const year = form.year.trim();
-    const month = form.month.trim();
-    const day = form.day.trim();
-    if (year && month && day) {
-      const deadline = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      await window.todoPet.todos.setDeadline(item.id, deadline);
-    } else {
-      await window.todoPet.todos.setDeadline(item.id, undefined);
+    let deadline: string | undefined;
+    try {
+      deadline = buildDeadlineInput(form, new Date(), language);
+    } catch (error) {
+      setDeadlineFormError((error as Error).message);
+      return;
     }
+    setDeadlineFormError('');
+    await window.todoPet.todos.setDeadline(item.id, deadline);
     setDeadlineFormTodo(null);
   }
 
@@ -585,6 +592,7 @@ export function App(): ReactElement {
       if (!sub) return;
       const today = new Date();
       const parts = sub.deadline?.split('-') ?? [];
+      setSubTaskDeadlineFormError('');
       setSubTaskDeadlineForm({
         parentId: action.parentId,
         subTaskId: action.subTaskId,
@@ -616,15 +624,15 @@ export function App(): ReactElement {
     event.preventDefault();
     const form = subTaskDeadlineForm;
     if (!form) return;
-    const year = form.year.trim();
-    const month = form.month.trim();
-    const day = form.day.trim();
-    if (year && month && day) {
-      const deadline = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      await window.todoPet.todos.setSubTaskDeadline(parentId, form.subTaskId, deadline);
-    } else {
-      await window.todoPet.todos.setSubTaskDeadline(parentId, form.subTaskId, undefined);
+    let deadline: string | undefined;
+    try {
+      deadline = buildDeadlineInput(form, new Date(), language);
+    } catch (error) {
+      setSubTaskDeadlineFormError((error as Error).message);
+      return;
     }
+    setSubTaskDeadlineFormError('');
+    await window.todoPet.todos.setSubTaskDeadline(parentId, form.subTaskId, deadline);
     setSubTaskDeadlineForm(null);
   }
 
@@ -978,16 +986,17 @@ export function App(): ReactElement {
                   <div className="todo-deadline-inputs">
                     <input autoFocus className="todo-deadline-year" value={deadlineFormTodo.year} onChange={(event) => setDeadlineFormTodo({ ...deadlineFormTodo, year: event.target.value })} placeholder={tr('schedule.year')} />
                     <input className="todo-deadline-month" value={deadlineFormTodo.month} onChange={(event) => setDeadlineFormTodo({ ...deadlineFormTodo, month: event.target.value })} placeholder={tr('schedule.month')} />
-                    <input className="todo-deadline-day" value={deadlineFormTodo.day} onChange={(event) => setDeadlineFormTodo({ ...deadlineFormTodo, day: event.target.value })} placeholder={tr('schedule.day')} />
+                    <input className="todo-deadline-day" value={deadlineFormTodo.day} onChange={(event) => setDeadlineFormTodo({ ...deadlineFormTodo, day: event.target.value })} min={1} max={deadlineMaxDay} placeholder={tr('schedule.day')} />
                   </div>
+                  {deadlineFormError ? <div className="todo-deadline-error">{deadlineFormError}</div> : null}
                   <div className="todo-deadline-editor-actions">
                     {item.deadline ? (
-                      <button className="icon-button icon-button--danger" title={tr('menu.removeDeadline')} type="button" onClick={() => { void window.todoPet.todos.setDeadline(item.id, undefined); setDeadlineFormTodo(null); }}>
+                      <button className="icon-button icon-button--danger" title={tr('menu.removeDeadline')} type="button" onClick={() => { void window.todoPet.todos.setDeadline(item.id, undefined); setDeadlineFormTodo(null); setDeadlineFormError(''); }}>
                         <Trash2 size={16} />
                       </button>
                     ) : null}
                     <button className="icon-button" title={tr('todo.save')} type="submit"><Check size={16} /></button>
-                    <button className="icon-button" title={tr('menu.cancelEdit')} type="button" onClick={() => setDeadlineFormTodo(null)}><X size={16} /></button>
+                    <button className="icon-button" title={tr('menu.cancelEdit')} type="button" onClick={() => { setDeadlineFormTodo(null); setDeadlineFormError(''); }}><X size={16} /></button>
                   </div>
                 </form>
               ) : null}
@@ -1061,14 +1070,15 @@ export function App(): ReactElement {
                     <div className="todo-deadline-inputs">
                       <input autoFocus className="todo-deadline-year" value={subTaskDeadlineForm.year} onChange={(event) => setSubTaskDeadlineForm({ ...subTaskDeadlineForm!, year: event.target.value })} placeholder={tr('schedule.year')} />
                       <input className="todo-deadline-month" value={subTaskDeadlineForm.month} onChange={(event) => setSubTaskDeadlineForm({ ...subTaskDeadlineForm!, month: event.target.value })} placeholder={tr('schedule.month')} />
-                      <input className="todo-deadline-day" value={subTaskDeadlineForm.day} onChange={(event) => setSubTaskDeadlineForm({ ...subTaskDeadlineForm!, day: event.target.value })} placeholder={tr('schedule.day')} />
+                      <input className="todo-deadline-day" value={subTaskDeadlineForm.day} onChange={(event) => setSubTaskDeadlineForm({ ...subTaskDeadlineForm!, day: event.target.value })} min={1} max={subTaskDeadlineMaxDay} placeholder={tr('schedule.day')} />
                     </div>
+                    {subTaskDeadlineFormError ? <div className="todo-deadline-error">{subTaskDeadlineFormError}</div> : null}
                     <div className="todo-deadline-editor-actions">
                       {sub.deadline ? (
-                        <button className="icon-button icon-button--danger" title={tr('menu.removeDeadline')} type="button" onClick={() => { void window.todoPet.todos.setSubTaskDeadline(item.id, sub.id, undefined); setSubTaskDeadlineForm(null); }}><Trash2 size={14} /></button>
+                        <button className="icon-button icon-button--danger" title={tr('menu.removeDeadline')} type="button" onClick={() => { void window.todoPet.todos.setSubTaskDeadline(item.id, sub.id, undefined); setSubTaskDeadlineForm(null); setSubTaskDeadlineFormError(''); }}><Trash2 size={14} /></button>
                       ) : null}
                       <button className="icon-button" title={tr('todo.save')} type="submit"><Check size={14} /></button>
-                      <button className="icon-button" title={tr('menu.cancelEdit')} type="button" onClick={() => setSubTaskDeadlineForm(null)}><X size={14} /></button>
+                      <button className="icon-button" title={tr('menu.cancelEdit')} type="button" onClick={() => { setSubTaskDeadlineForm(null); setSubTaskDeadlineFormError(''); }}><X size={14} /></button>
                     </div>
                   </form>
                 </div>

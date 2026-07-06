@@ -111,6 +111,47 @@ export function getScheduleFormMaxDay(form: ScheduleFormState, now = new Date())
   return daysInMonth(year, month);
 }
 
+export type DeadlineFormParts = { year: string; month: string; day: string };
+
+/**
+ * Computes the maximum valid day for the deadline form's current year/month
+ * inputs, mirroring {@link getScheduleFormMaxDay} so the day field can clamp
+ * its `max` attribute.
+ */
+export function getDeadlineFormMaxDay(parts: DeadlineFormParts, now = new Date()): number {
+  const year = parseOptionalDatePart(parts.year, 1, 9999) ?? now.getFullYear();
+  const month = parseOptionalDatePart(parts.month, 1, 12) ?? now.getMonth() + 1;
+  return daysInMonth(year, month);
+}
+
+/**
+ * Validates the year/month/day parts of a TODO (or sub-task) deadline form and
+ * returns a normalized `YYYY-MM-DD` string, or `undefined` when all fields are
+ * empty (meaning "clear the deadline"). Throws an Error with an i18n message on
+ * invalid input, applying the same range and calendar checks as
+ * {@link buildScheduleInput}.
+ */
+export function buildDeadlineInput(
+  parts: DeadlineFormParts,
+  now = new Date(),
+  language: AppLanguage = defaultLanguage
+): string | undefined {
+  const year = parts.year.trim();
+  const month = parts.month.trim();
+  const day = parts.day.trim();
+  if (!year && !month && !day) {
+    return undefined;
+  }
+  if (!year || !month || !day) {
+    throw new Error(t(language, 'validation.dateRequired'));
+  }
+  const y = parseRequiredNumber(year, 1, 9999, t(language, 'validation.invalidYear'));
+  const m = parseRequiredNumber(month, 1, 12, t(language, 'validation.monthRange'));
+  const maxDay = daysInMonth(y, m);
+  const d = parseRequiredNumber(day, 1, maxDay, t(language, 'validation.dayRange', { max: maxDay }));
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
 export function formatScheduleSummary(rule: ScheduledTodoRule, language: AppLanguage = defaultLanguage): string {
   const time = `${String(rule.hour).padStart(2, '0')}:${String(rule.minute).padStart(2, '0')}`;
   if (rule.kind === 'one-time') {
