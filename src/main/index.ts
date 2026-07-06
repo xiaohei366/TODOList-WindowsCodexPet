@@ -436,6 +436,10 @@ function showTodoMenu(payload: { point?: { x: number; y: number }; item: TodoIte
       label: tr('menu.edit'),
       click: () => sendTodoMenuAction({ type: 'edit', id: item.id })
     },
+    {
+      label: tr('focus.enter'),
+      click: () => sendTodoMenuAction({ type: 'enter-focus', id: item.id })
+    },
     { type: 'separator' },
     {
       label: item.completed ? tr('menu.markActive') : tr('menu.markDone'),
@@ -503,6 +507,10 @@ function showSubTaskMenu(payload: { point?: { x: number; y: number }; parentId: 
     {
       label: tr('menu.edit'),
       click: () => sendSubTaskMenuAction({ type: 'edit', parentId, subTaskId: subTask.id })
+    },
+    {
+      label: tr('focus.enter'),
+      click: () => sendSubTaskMenuAction({ type: 'enter-focus', parentId, subTaskId: subTask.id })
     },
     { type: 'separator' },
     {

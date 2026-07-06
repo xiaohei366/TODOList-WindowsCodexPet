@@ -100,7 +100,10 @@ const zh = {
   'validation.invalidYear': '年份无效。',
   'validation.minuteRange': '分钟需为 0-59。',
   'validation.monthRange': '月份需为 1-12。',
-  'validation.todoRequired': 'TODO 内容必填。'
+  'validation.todoRequired': 'TODO 内容必填。',
+  'focus.enter': '进入专注',
+  'focus.exit': '退出',
+  'focus.completed': '已完成'
 } as const;
 
 export type I18nKey = keyof typeof zh;
@@ -198,7 +201,10 @@ const en: Record<I18nKey, string> = {
   'validation.invalidYear': 'Year must be valid.',
   'validation.minuteRange': 'Minute must be 0-59.',
   'validation.monthRange': 'Month must be 1-12.',
-  'validation.todoRequired': 'TODO text is required.'
+  'validation.todoRequired': 'TODO text is required.',
+  'focus.enter': 'Enter Focus',
+  'focus.exit': 'Exit',
+  'focus.completed': 'Completed'
 };
 
 const translations: Record<AppLanguage, Record<I18nKey, string>> = {

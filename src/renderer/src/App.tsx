@@ -30,6 +30,7 @@ import {
 import { countCompletedToday, countRemainingToday, formatLocalDateKey, getNextLocalDayRefreshDelay } from './todoStats';
 import { hasExceededPetWindowDragThreshold } from './windowDrag';
 import { shouldIgnoreWindowMouseEvents } from './mousePassthrough';
+import { FocusMode } from './FocusMode';
 
 const selectedPetStorageKey = 'tolist:selected-pet';
 const petUiScaleStorageKey = 'tolist:pet-ui-scale';
@@ -47,6 +48,11 @@ export function App(): ReactElement {
   const [selectedPetId, setSelectedPetId] = useState<string>(() => localStorage.getItem(selectedPetStorageKey) ?? '');
   const [todoPanelVisible, setTodoPanelVisible] = useState(true);
   const [schedulePanelVisible, setSchedulePanelVisible] = useState(false);
+  const [focusTarget, setFocusTarget] = useState<
+    | { kind: 'todo'; id: string }
+    | { kind: 'subtask'; parentId: string; subTaskId: string }
+    | null
+  >(null)
   const [composerOpen, setComposerOpen] = useState(false);
   const [scheduleFormOpen, setScheduleFormOpen] = useState(false);
   const [newTodoText, setNewTodoText] = useState('');
@@ -313,6 +319,17 @@ export function App(): ReactElement {
       isHovered: petHovered
     });
 
+  const focusData = useMemo(() => {
+    if (!focusTarget) return null
+    if (focusTarget.kind === 'todo') {
+      const item = todos.find((t) => t.id === focusTarget.id)
+      return item ? { text: item.text, completed: item.completed } : null
+    }
+    const parent = todos.find((t) => t.id === focusTarget.parentId)
+    const sub = parent?.subTasks.find((s) => s.id === focusTarget.subTaskId)
+    return sub ? { text: sub.text, completed: sub.completed } : null
+  }, [focusTarget, todos])
+
   function tr(key: I18nKey, values?: Record<string, string | number>): string {
     return t(language, key, values);
   }
@@ -447,6 +464,10 @@ export function App(): ReactElement {
       setEditingTodo({ id: item.id, text: item.text });
       return;
     }
+    if (action.type === 'enter-focus') {
+      setFocusTarget({ kind: 'todo', id: action.id });
+      return;
+    }
     if (action.type === 'edit-notes') {
       setComposerOpen(false);
       setEditingNotesTodo({ id: item.id, notes: item.notes ?? '' });
@@ -579,6 +600,10 @@ export function App(): ReactElement {
       setEditingTodo({ id: sub.id, text: sub.text, parentId: action.parentId });
       return;
     }
+    if (action.type === 'enter-focus') {
+      setFocusTarget({ kind: 'subtask', parentId: action.parentId, subTaskId: action.subTaskId });
+      return;
+    }
     if (action.type === 'toggle-completed') {
       const parent = todos.find((item) => item.id === action.parentId);
       const sub = parent?.subTasks.find((s) => s.id === action.subTaskId);
@@ -608,6 +633,20 @@ export function App(): ReactElement {
     }
     if (action.type === 'move-up' || action.type === 'move-down') {
       void window.todoPet.todos.moveSubTask(action.parentId, action.subTaskId, action.type === 'move-up' ? 'up' : 'down');
+    }
+  }
+
+  function handleFocusToggleCompleted(): void {
+    if (!focusTarget) return
+    if (focusTarget.kind === 'todo') {
+      const item = todos.find((t) => t.id === focusTarget.id)
+      if (!item) return
+      void window.todoPet.todos.setCompleted(focusTarget.id, !item.completed)
+    } else {
+      const parent = todos.find((t) => t.id === focusTarget.parentId)
+      const sub = parent?.subTasks.find((s) => s.id === focusTarget.subTaskId)
+      if (!sub) return
+      void window.todoPet.todos.setSubTaskCompleted(focusTarget.parentId, focusTarget.subTaskId, !sub.completed)
     }
   }
 
@@ -1136,7 +1175,23 @@ export function App(): ReactElement {
 
   return (
     <main className="pet-stage" style={{ '--pet-ui-scale': petUiScale } as CSSProperties}>
-      {schedulePanelVisible ? (
+      {focusTarget && focusData ? (
+        <section
+          className="todo-panel"
+          style={{ bottom: petBaseBottom + petBaseHeight * petUiScale + todoPetGap }}
+        >
+          <FocusMode
+            text={focusData.text}
+            completed={focusData.completed}
+            completedLabel={tr('focus.completed')}
+            exitLabel={tr('focus.exit')}
+            onToggleCompleted={handleFocusToggleCompleted}
+            onExit={() => setFocusTarget(null)}
+          />
+        </section>
+      ) : (
+        <>
+          {schedulePanelVisible ? (
         <section
           className="todo-panel schedule-panel"
           aria-label={tr('schedule.aria')}
@@ -1331,6 +1386,8 @@ export function App(): ReactElement {
           </div>
         </section>
       ) : null}
+        </>
+      )}
 
       <div
         className="pet-anchor"
@@ -1352,7 +1409,6 @@ export function App(): ReactElement {
           onPointerDown={startPetUiResize}
         />
       </div>
-
     </main>
   );
 }

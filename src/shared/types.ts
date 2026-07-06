@@ -33,7 +33,8 @@ export type TodoMenuActionType =
   | 'toggle-highlighted'
   | 'delete'
   | 'move-up'
-  | 'move-down';
+  | 'move-down'
+  | 'enter-focus';
 
 export type TodoMenuAction = {
   type: TodoMenuActionType;
@@ -46,7 +47,8 @@ export type SubTaskMenuActionType =
   | 'set-deadline'
   | 'delete'
   | 'move-up'
-  | 'move-down';
+  | 'move-down'
+  | 'enter-focus';
 
 export type SubTaskMenuAction = {
   type: SubTaskMenuActionType;
