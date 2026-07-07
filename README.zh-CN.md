@@ -1,6 +1,6 @@
 # TODOList Windows Codex Pet
 
-[English](README.md)
+[English](README.en.md)
 
 这是一个 Windows 桌宠 TODO 管理应用，基于 Electron、React 和 TypeScript 构建。它使用人类可读的 Markdown 文件保存 TODO，并兼容 Codex 桌宠资源格式和本地 Codex 宠物包生态。
 
