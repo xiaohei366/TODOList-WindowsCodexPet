@@ -53,6 +53,7 @@ export function App(): ReactElement {
     | { kind: 'subtask'; parentId: string; subTaskId: string }
     | null
   >(null)
+  const [focusToast, setFocusToast] = useState<string | null>(null)
   const [composerOpen, setComposerOpen] = useState(false);
   const [scheduleFormOpen, setScheduleFormOpen] = useState(false);
   const [newTodoText, setNewTodoText] = useState('');
@@ -636,17 +637,31 @@ export function App(): ReactElement {
     }
   }
 
+  useEffect(() => {
+    if (!focusToast) return
+    const timer = setTimeout(() => setFocusToast(null), 3000)
+    return () => clearTimeout(timer)
+  }, [focusToast])
+
   function handleFocusToggleCompleted(): void {
     if (!focusTarget) return
     if (focusTarget.kind === 'todo') {
       const item = todos.find((t) => t.id === focusTarget.id)
       if (!item) return
-      void window.todoPet.todos.setCompleted(focusTarget.id, !item.completed)
+      if (!item.completed && item.subTasks.some((s) => !s.completed)) {
+        setFocusToast(tr('focus.blockedBySubTasks'))
+        return
+      }
+      if (!item.completed) {
+        void window.todoPet.todos.setCompleted(focusTarget.id, true)
+      }
+      setFocusTarget(null)
     } else {
       const parent = todos.find((t) => t.id === focusTarget.parentId)
       const sub = parent?.subTasks.find((s) => s.id === focusTarget.subTaskId)
       if (!sub) return
       void window.todoPet.todos.setSubTaskCompleted(focusTarget.parentId, focusTarget.subTaskId, !sub.completed)
+      setFocusTarget(null)
     }
   }
 
@@ -1185,6 +1200,7 @@ export function App(): ReactElement {
             completed={focusData.completed}
             completedLabel={tr('focus.completed')}
             exitLabel={tr('focus.exit')}
+            toastMessage={focusToast}
             onToggleCompleted={handleFocusToggleCompleted}
             onExit={() => setFocusTarget(null)}
           />

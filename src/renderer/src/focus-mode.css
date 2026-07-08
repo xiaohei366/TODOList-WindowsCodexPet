@@ -147,11 +147,40 @@
   position: relative;
   z-index: 1;
   display: flex;
+  flex-wrap: wrap;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 8px;
   margin-top: 10px;
+}
+
+.focus-panel__toast {
+  width: 100%;
+  margin: 0 0 2px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  color: #fef3c7;
+  background: rgba(217, 119, 6, 0.32);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  animation: focus-toast-in 280ms ease-out;
+}
+
+@keyframes focus-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .focus-panel__button {

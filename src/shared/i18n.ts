@@ -103,7 +103,8 @@ const zh = {
   'validation.todoRequired': 'TODO 内容必填。',
   'focus.enter': '进入专注',
   'focus.exit': '退出',
-  'focus.completed': '已完成'
+  'focus.completed': '已完成',
+  'focus.blockedBySubTasks': '仍有子任务未完成，不可标注"已完成"'
 } as const;
 
 export type I18nKey = keyof typeof zh;
@@ -204,7 +205,8 @@ const en: Record<I18nKey, string> = {
   'validation.todoRequired': 'TODO text is required.',
   'focus.enter': 'Enter Focus',
   'focus.exit': 'Exit',
-  'focus.completed': 'Completed'
+  'focus.completed': 'Completed',
+  'focus.blockedBySubTasks': 'Cannot mark as done: incomplete sub-tasks remain'
 };
 
 const translations: Record<AppLanguage, Record<I18nKey, string>> = {

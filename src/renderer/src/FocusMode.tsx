@@ -6,6 +6,7 @@ export type FocusModeProps = {
   completed: boolean;
   completedLabel: string;
   exitLabel: string;
+  toastMessage: string | null;
   onToggleCompleted: () => void;
   onExit: () => void;
 };
@@ -14,7 +15,7 @@ const MAX_FONT_SIZE = 22;
 const MIN_FONT_SIZE = 12;
 
 export function FocusMode(props: FocusModeProps): ReactElement {
-  const { text, completed, completedLabel, exitLabel, onToggleCompleted, onExit } = props;
+  const { text, completed, completedLabel, exitLabel, toastMessage, onToggleCompleted, onExit } = props;
   const textRef = useRef<HTMLParagraphElement | null>(null);
 
   useEffect(() => {
@@ -54,6 +55,12 @@ export function FocusMode(props: FocusModeProps): ReactElement {
       </div>
 
       <div className="focus-panel__buttons">
+        {toastMessage ? (
+          <p className="focus-panel__toast" role="alert">{toastMessage}</p>
+        ) : (
+          <></>
+        )}
+
         <button
           type="button"
           className={`focus-panel__button focus-panel__button--primary${completed ? ' focus-panel__button--primary-active' : ''}`}
