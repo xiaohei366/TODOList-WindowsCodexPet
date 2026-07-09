@@ -21,6 +21,8 @@ export type ScheduleFormState = {
   year: string;
   month: string;
   day: string;
+  deadlineEnabled: boolean;
+  deadlineDays: string;
 };
 
 export function createEmptyScheduleForm(): ScheduleFormState {
@@ -33,7 +35,9 @@ export function createEmptyScheduleForm(): ScheduleFormState {
     weekdays: [1, 2, 3, 4, 5],
     year: '',
     month: '',
-    day: ''
+    day: '',
+    deadlineEnabled: false,
+    deadlineDays: '1'
   };
 }
 
@@ -59,7 +63,9 @@ export function scheduleRuleToForm(rule: ScheduledTodoRule): ScheduleFormState {
     weekdays: rule.kind === 'weekly' ? rule.weekdays : [1, 2, 3, 4, 5],
     year: dateParts[0],
     month: dateParts[1],
-    day: dateParts[2]
+    day: dateParts[2],
+    deadlineEnabled: rule.deadlineDays !== undefined,
+    deadlineDays: rule.deadlineDays !== undefined ? String(rule.deadlineDays) : '1'
   };
 }
 
@@ -74,6 +80,9 @@ export function buildScheduleInput(
   }
   const hour = parseRequiredNumber(form.hour, 0, 23, t(language, 'validation.hourRange'));
   const minute = parseRequiredNumber(form.minute, 0, 59, t(language, 'validation.minuteRange'));
+  const deadlineDays = form.deadlineEnabled
+    ? parseRequiredNumber(form.deadlineDays, 1, 9999, t(language, 'validation.deadlineDaysRange'))
+    : null;
 
   if (form.kind === 'weekly') {
     return {
@@ -82,7 +91,8 @@ export function buildScheduleInput(
       text,
       hour,
       minute,
-      weekdays: form.weekdays.length > 0 ? form.weekdays : [1, 2, 3, 4, 5]
+      weekdays: form.weekdays.length > 0 ? form.weekdays : [1, 2, 3, 4, 5],
+      deadlineDays
     };
   }
 
@@ -101,7 +111,8 @@ export function buildScheduleInput(
     minute,
     year,
     month,
-    day
+    day,
+    deadlineDays
   };
 }
 
@@ -154,10 +165,13 @@ export function buildDeadlineInput(
 
 export function formatScheduleSummary(rule: ScheduledTodoRule, language: AppLanguage = defaultLanguage): string {
   const time = `${String(rule.hour).padStart(2, '0')}:${String(rule.minute).padStart(2, '0')}`;
-  if (rule.kind === 'one-time') {
-    return `${rule.date} ${time}`;
+  const base = rule.kind === 'one-time'
+    ? `${rule.date} ${time}`
+    : `${t(language, 'schedule.weeklyPrefix')} ${rule.weekdays.map((day) => weekdayOptions.find((weekday) => weekday.value === day)?.label ?? day).join('')} ${time}`;
+  if (rule.deadlineDays !== undefined) {
+    return `${base} · ${t(language, 'schedule.deadlineSummary', { count: rule.deadlineDays })}`;
   }
-  return `${t(language, 'schedule.weeklyPrefix')} ${rule.weekdays.map((day) => weekdayOptions.find((weekday) => weekday.value === day)?.label ?? day).join('')} ${time}`;
+  return base;
 }
 
 function parseRequiredNumber(value: string, min: number, max: number, message: string): number {

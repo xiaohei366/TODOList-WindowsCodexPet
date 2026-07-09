@@ -28,13 +28,61 @@ describe('scheduled TODOs', () => {
       minute: 30,
       weekdays: [1, 2, 3, 4, 5]
     });
-    const added: string[] = [];
+    const added: Array<{ text: string; deadline?: string }> = [];
 
-    await expect(runDueScheduledTodos(store, { add: async (text) => added.push(text) }, now)).resolves.toBe(1);
-    await expect(runDueScheduledTodos(store, { add: async (text) => added.push(text) }, now)).resolves.toBe(0);
+    await expect(runDueScheduledTodos(store, { add: async (text, deadline) => added.push({ text, deadline }) }, now)).resolves.toBe(1);
+    await expect(runDueScheduledTodos(store, { add: async (text, deadline) => added.push({ text, deadline }) }, now)).resolves.toBe(0);
 
-    expect(added).toEqual(['Daily problem']);
+    expect(added).toEqual([{ text: 'Daily problem', deadline: undefined }]);
     expect((await store.list())[0]).toMatchObject({ lastGeneratedDate: '2026-05-11' });
+  });
+
+  test('computes deadline as today + deadlineDays when generating a TODO', async () => {
+    const now = new Date(2026, 4, 11, 9, 30);
+    const store = new ScheduledTodoStore(file, () => now);
+    await store.create({
+      kind: 'weekly',
+      enabled: true,
+      text: 'Weekly report',
+      hour: 9,
+      minute: 30,
+      weekdays: [1, 2, 3, 4, 5],
+      deadlineDays: 3
+    });
+    const added: Array<{ text: string; deadline?: string }> = [];
+
+    await runDueScheduledTodos(store, { add: async (text, deadline) => added.push({ text, deadline }) }, now);
+
+    expect(added).toEqual([{ text: 'Weekly report', deadline: '2026-05-14' }]);
+  });
+
+  test('rejects deadlineDays outside the 1-9999 range', async () => {
+    const store = new ScheduledTodoStore(file, () => new Date(2026, 4, 11, 9, 0));
+
+    await expect(
+      store.create({ kind: 'weekly', enabled: true, text: 'Task', hour: 9, minute: 0, weekdays: [1], deadlineDays: 0 })
+    ).rejects.toThrow('截止天数需为 1-9999。');
+    await expect(
+      store.create({ kind: 'weekly', enabled: true, text: 'Task', hour: 9, minute: 0, weekdays: [1], deadlineDays: 10000 })
+    ).rejects.toThrow('截止天数需为 1-9999。');
+  });
+
+  test('round-trips deadlineDays through persistence', async () => {
+    const store = new ScheduledTodoStore(file, () => new Date(2026, 4, 11, 9, 0));
+    await store.create({
+      kind: 'one-time',
+      enabled: true,
+      text: 'Submit report',
+      hour: 9,
+      minute: 0,
+      year: 2026,
+      month: 5,
+      day: 13,
+      deadlineDays: 7
+    });
+
+    const reloaded = new ScheduledTodoStore(file, () => new Date(2026, 4, 11, 9, 0));
+    expect((await reloaded.list())[0]).toMatchObject({ deadlineDays: 7 });
   });
 
   test('fires a one-time rule once and removes the completed rule', async () => {
@@ -50,12 +98,12 @@ describe('scheduled TODOs', () => {
       month: 5,
       day: 13
     });
-    const added: string[] = [];
+    const added: Array<{ text: string; deadline?: string }> = [];
 
-    await expect(runDueScheduledTodos(store, { add: async (text) => added.push(text) }, now)).resolves.toBe(1);
-    await expect(runDueScheduledTodos(store, { add: async (text) => added.push(text) }, now)).resolves.toBe(0);
+    await expect(runDueScheduledTodos(store, { add: async (text, deadline) => added.push({ text, deadline }) }, now)).resolves.toBe(1);
+    await expect(runDueScheduledTodos(store, { add: async (text, deadline) => added.push({ text, deadline }) }, now)).resolves.toBe(0);
 
-    expect(added).toEqual(['Submit report']);
+    expect(added).toEqual([{ text: 'Submit report', deadline: undefined }]);
     expect(await store.list()).toEqual([]);
   });
 
@@ -70,9 +118,9 @@ describe('scheduled TODOs', () => {
       minute: 0,
       weekdays: [1]
     });
-    const added: string[] = [];
+    const added: Array<{ text: string; deadline?: string }> = [];
 
-    await expect(runDueScheduledTodos(store, { add: async (text) => added.push(text) }, now)).resolves.toBe(0);
+    await expect(runDueScheduledTodos(store, { add: async (text, deadline) => added.push({ text, deadline }) }, now)).resolves.toBe(0);
 
     expect(added).toEqual([]);
     expect((await store.list())[0]).not.toHaveProperty('lastGeneratedDate');

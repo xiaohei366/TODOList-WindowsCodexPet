@@ -273,6 +273,7 @@ button {
 .weekday-row,
 .schedule-time,
 .schedule-date,
+.schedule-deadline,
 .schedule-form__actions {
   display: flex;
   align-items: center;
@@ -324,6 +325,32 @@ button {
 .schedule-date {
   display: grid;
   grid-template-columns: 1.2fr 0.9fr 0.9fr;
+}
+
+.schedule-deadline__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #4f635b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.schedule-deadline__days {
+  width: 56px;
+}
+
+.schedule-deadline__days:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.schedule-deadline__unit {
+  color: #6b7772;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .schedule-form__actions {

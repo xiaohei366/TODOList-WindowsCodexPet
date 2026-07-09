@@ -134,6 +134,7 @@ Right-click the pet and choose `定时 TODO` to manage automatic TODO creation.
 - Weekdays are shown as numbers `1-7` in the compact picker.
 - Missed runs are only backfilled for today. Older missed days are not created.
 - Each rule creates at most one TODO per local day.
+- Optional "Set deadline": when checked, enter N (1-9999) and the generated TODO gets a deadline of the generation day plus N days.
 - Use the pet menu to export or import both `todos.md` and `scheduled-todos.json` when moving to another Windows environment.
 
 ## Pet Package Format

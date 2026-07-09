@@ -1270,6 +1270,27 @@ export function App(): ReactElement {
                   onChange={(event) => updateScheduleForm({ minute: event.target.value })}
                 />
               </div>
+              <div className="schedule-deadline">
+                <label className="schedule-deadline__check">
+                  <input
+                    type="checkbox"
+                    checked={scheduleForm.deadlineEnabled}
+                    onChange={(event) => updateScheduleForm({ deadlineEnabled: event.target.checked })}
+                  />
+                  <span>{tr('schedule.deadline')}</span>
+                </label>
+                <input
+                  className="schedule-deadline__days"
+                  disabled={!scheduleForm.deadlineEnabled}
+                  max={9999}
+                  min={1}
+                  placeholder="1"
+                  type="number"
+                  value={scheduleForm.deadlineDays}
+                  onChange={(event) => updateScheduleForm({ deadlineDays: event.target.value })}
+                />
+                <span className="schedule-deadline__unit">{tr('schedule.deadlineDays')}</span>
+              </div>
               {scheduleForm.kind === 'weekly' ? (
                 <div className="weekday-row">
                   <span className="weekday-row__label">{tr('schedule.weekly')}</span>

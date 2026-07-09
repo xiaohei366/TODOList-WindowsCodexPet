@@ -13,7 +13,7 @@ type ScheduleDocument = {
 };
 
 export type ScheduledTodoAdder = {
-  add(text: string): Promise<unknown>;
+  add(text: string, deadline?: string): Promise<unknown>;
 };
 
 export class ScheduledTodoStore {
@@ -166,6 +166,7 @@ export class ScheduledTodoStore {
     }
     const hour = normalizeTimePart(input.hour, 0, 23, '小时需为 0-23。');
     const minute = normalizeTimePart(input.minute, 0, 59, '分钟需为 0-59。');
+    const deadlineDays = normalizeDeadlineDays(input.deadlineDays);
 
     if (input.kind === 'weekly') {
       return withoutUndefined({
@@ -178,7 +179,8 @@ export class ScheduledTodoStore {
         weekdays: normalizeWeekdays(input.weekdays),
         createdAt: metadata.createdAt,
         updatedAt: metadata.updatedAt,
-        lastGeneratedDate: metadata.lastGeneratedDate
+        lastGeneratedDate: metadata.lastGeneratedDate,
+        deadlineDays
       }) as ScheduledTodoRule;
     }
 
@@ -193,7 +195,8 @@ export class ScheduledTodoStore {
       fired: metadata.fired,
       createdAt: metadata.createdAt,
       updatedAt: metadata.updatedAt,
-      lastGeneratedDate: metadata.lastGeneratedDate
+      lastGeneratedDate: metadata.lastGeneratedDate,
+      deadlineDays
     }) as ScheduledTodoRule;
   }
 
@@ -257,7 +260,10 @@ export async function runDueScheduledTodos(
       continue;
     }
 
-    await todoAdder.add(rule.text);
+    const deadline = rule.deadlineDays
+      ? formatDateKey(addDays(now, rule.deadlineDays))
+      : undefined;
+    await todoAdder.add(rule.text, deadline);
     if (rule.kind === 'one-time') {
       await store.delete(rule.id);
     } else {
@@ -325,7 +331,8 @@ function normalizeStoredRule(rule: ScheduledTodoRule): ScheduledTodoRule {
     minute: normalizeTimePart(rule.minute, 0, 59, '分钟需为 0-59。'),
     createdAt: normalizeIso(rule.createdAt),
     updatedAt: normalizeIso(rule.updatedAt),
-    lastGeneratedDate: rule.lastGeneratedDate
+    lastGeneratedDate: rule.lastGeneratedDate,
+    deadlineDays: normalizeDeadlineDays(rule.deadlineDays)
   };
   if (!base.text) {
     throw new Error('TODO 内容必填。');
@@ -358,6 +365,21 @@ function normalizeTimePart(value: number | null | undefined, min: number, max: n
     throw new Error(rangeMessage);
   }
   return parsed;
+}
+
+function normalizeDeadlineDays(value: number | null | undefined): number | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 9999) {
+    throw new Error('截止天数需为 1-9999。');
+  }
+  return parsed;
+}
+
+function addDays(base: Date, days: number): Date {
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate() + days);
 }
 
 function normalizeWeekdays(weekdays: number[] | undefined): number[] {

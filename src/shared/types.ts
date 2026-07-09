@@ -99,6 +99,7 @@ export type ScheduledTodoBase = {
   createdAt: string;
   updatedAt: string;
   lastGeneratedDate?: string;
+  deadlineDays?: number;
 };
 
 export type WeeklyScheduledTodoRule = ScheduledTodoBase & {
@@ -125,6 +126,7 @@ export type ScheduledTodoInput = {
   year?: number | null;
   month?: number | null;
   day?: number | null;
+  deadlineDays?: number | null;
 };
 
 export type ImportResult = {

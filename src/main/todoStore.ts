@@ -178,7 +178,7 @@ export class TodoMarkdownStore {
     return this.readItems();
   }
 
-  async add(text: string): Promise<TodoItem> {
+  async add(text: string, deadline?: string): Promise<TodoItem> {
     const cleaned = cleanTodoText(text);
     if (!cleaned) {
       throw new Error('Todo text is required.');
@@ -197,7 +197,8 @@ export class TodoMarkdownStore {
       order: items.length,
       notes: '',
       tag: undefined,
-      subTasks: []
+      subTasks: [],
+      deadline: deadline || undefined
     });
     await this.writeItems(items);
     const updated = await this.readItems();
