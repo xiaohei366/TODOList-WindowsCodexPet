@@ -37,7 +37,7 @@ describe('scheduled TODOs', () => {
     expect((await store.list())[0]).toMatchObject({ lastGeneratedDate: '2026-05-11' });
   });
 
-  test('computes deadline as today + deadlineDays when generating a TODO', async () => {
+  test('treats "N days to complete" with the firing day as day 1', async () => {
     const now = new Date(2026, 4, 11, 9, 30);
     const store = new ScheduledTodoStore(file, () => now);
     await store.create({
@@ -47,13 +47,27 @@ describe('scheduled TODOs', () => {
       hour: 9,
       minute: 30,
       weekdays: [1, 2, 3, 4, 5],
+      deadlineDays: 1
+    });
+    const addedOneDay: Array<{ text: string; deadline?: string }> = [];
+    await runDueScheduledTodos(store, { add: async (text, deadline) => addedOneDay.push({ text, deadline }) }, now);
+    // 1 天完成 = 当天（生成日）截止
+    expect(addedOneDay).toEqual([{ text: 'Weekly report', deadline: '2026-05-11' }]);
+
+    // 3 天完成 = 第 3 天（生成日后两天）截止
+    const store2 = new ScheduledTodoStore(file, () => now);
+    await store2.create({
+      kind: 'weekly',
+      enabled: true,
+      text: 'Weekly report',
+      hour: 9,
+      minute: 30,
+      weekdays: [1, 2, 3, 4, 5],
       deadlineDays: 3
     });
-    const added: Array<{ text: string; deadline?: string }> = [];
-
-    await runDueScheduledTodos(store, { add: async (text, deadline) => added.push({ text, deadline }) }, now);
-
-    expect(added).toEqual([{ text: 'Weekly report', deadline: '2026-05-14' }]);
+    const addedThreeDays: Array<{ text: string; deadline?: string }> = [];
+    await runDueScheduledTodos(store2, { add: async (text, deadline) => addedThreeDays.push({ text, deadline }) }, now);
+    expect(addedThreeDays).toEqual([{ text: 'Weekly report', deadline: '2026-05-13' }]);
   });
 
   test('rejects deadlineDays outside the 1-9999 range', async () => {

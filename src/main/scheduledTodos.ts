@@ -261,7 +261,7 @@ export async function runDueScheduledTodos(
     }
 
     const deadline = rule.deadlineDays
-      ? formatDateKey(addDays(now, rule.deadlineDays))
+      ? formatDateKey(addDays(now, rule.deadlineDays - 1))
       : undefined;
     await todoAdder.add(rule.text, deadline);
     if (rule.kind === 'one-time') {
