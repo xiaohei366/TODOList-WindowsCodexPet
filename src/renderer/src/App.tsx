@@ -3,6 +3,7 @@ import React, { FormEvent, PointerEvent, ReactElement, type CSSProperties, useEf
 import type { PetPackage, PetState, ScheduledTodoInput, ScheduledTodoRule, ScheduleTarget, SubTaskMenuAction, TodoItem, TodoMenuAction, TodoSubTask } from '../../shared/types';
 import { type AppLanguage, type I18nKey, defaultLanguage, t } from '../../shared/i18n';
 import { getAnimationSpec, getInteractivePetState, getPetSpriteStyle, getTodoDrivenPetState } from './petAnimation';
+import { createCelebrationParticles, type CelebrationParticle } from './completionCelebration';
 import { clampPetUiScale, defaultPetUiScale, getPetUiScaleFromResizeDrag } from './petScale';
 import {
   buildDeadlineInput,
@@ -97,6 +98,8 @@ export function App(): ReactElement {
   );
   const [petHovered, setPetHovered] = useState(false);
   const [transientState, setTransientState] = useState<PetState | null>(null);
+  const [celebration, setCelebration] = useState<{ id: number; particles: CelebrationParticle[] } | null>(null);
+  const celebrationTimer = useRef<number | undefined>(undefined);
   const longPressTimer = useRef<number | undefined>(undefined);
   const windowDrag = useRef<{
     startX: number;
@@ -365,6 +368,16 @@ export function App(): ReactElement {
     void window.todoPet.pets.select(id);
   }
 
+  function triggerCelebration(): void {
+    setTransientState('jumping');
+    setCelebration({ id: Date.now(), particles: createCelebrationParticles(26) });
+    window.clearTimeout(celebrationTimer.current);
+    celebrationTimer.current = window.setTimeout(() => {
+      setTransientState(null);
+      setCelebration(null);
+    }, 1700);
+  }
+
   async function submitTodo(event: FormEvent): Promise<void> {
     event.preventDefault();
     const text = newTodoText.trim();
@@ -526,7 +539,9 @@ export function App(): ReactElement {
       return;
     }
     if (action.type === 'toggle-completed') {
-      void window.todoPet.todos.setCompleted(item.id, !item.completed);
+      void window.todoPet.todos.setCompleted(item.id, !item.completed).then(() => {
+        if (!item.completed) triggerCelebration();
+      });
       return;
     }
     if (action.type === 'toggle-highlighted') {
@@ -636,7 +651,9 @@ export function App(): ReactElement {
       const parent = todos.find((item) => item.id === action.parentId);
       const sub = parent?.subTasks.find((s) => s.id === action.subTaskId);
       if (!sub) return;
-      void window.todoPet.todos.setSubTaskCompleted(action.parentId, action.subTaskId, !sub.completed);
+      void window.todoPet.todos.setSubTaskCompleted(action.parentId, action.subTaskId, !sub.completed).then(() => {
+        if (!sub.completed) triggerCelebration();
+      });
       return;
     }
     if (action.type === 'set-deadline') {
@@ -680,14 +697,14 @@ export function App(): ReactElement {
         return
       }
       if (!item.completed) {
-        void window.todoPet.todos.setCompleted(focusTarget.id, true)
+        void window.todoPet.todos.setCompleted(focusTarget.id, true).then(() => triggerCelebration())
       }
       setFocusTarget(null)
     } else {
       const parent = todos.find((t) => t.id === focusTarget.parentId)
       const sub = parent?.subTasks.find((s) => s.id === focusTarget.subTaskId)
       if (!sub) return
-      void window.todoPet.todos.setSubTaskCompleted(focusTarget.parentId, focusTarget.subTaskId, !sub.completed)
+      void window.todoPet.todos.setSubTaskCompleted(focusTarget.parentId, focusTarget.subTaskId, !sub.completed).then(() => { if (!sub.completed) triggerCelebration(); })
       setFocusTarget(null)
     }
   }
@@ -1028,7 +1045,9 @@ export function App(): ReactElement {
                 title={item.completed ? tr('todo.markActive') : tr('todo.markDone')}
                 onClick={() => {
                   if (!item.completed && item.subTasks.some((s) => !s.completed)) return;
-                  void window.todoPet.todos.setCompleted(item.id, !item.completed);
+                  void window.todoPet.todos.setCompleted(item.id, !item.completed).then(() => {
+                    if (!item.completed) triggerCelebration();
+                  });
                 }}
               >
                 {item.completed ? <Check size={15} /> : <Circle size={15} />}
@@ -1144,7 +1163,7 @@ export function App(): ReactElement {
               </form>
             ) : subTaskDeadlineForm?.subTaskId === sub.id ? (
               <>
-                <button className="todo-check" onClick={() => void window.todoPet.todos.setSubTaskCompleted(item.id, sub.id, !sub.completed)}>{sub.completed ? <Check size={13} /> : <Circle size={13} />}</button>
+                <button className="todo-check" onClick={() => void window.todoPet.todos.setSubTaskCompleted(item.id, sub.id, !sub.completed).then(() => { if (!sub.completed) triggerCelebration(); })}>{sub.completed ? <Check size={13} /> : <Circle size={13} />}</button>
                 <div className="todo-copy">
                   <span>{sub.text}</span>
                   <form className="todo-deadline-editor" style={{ gridColumn: '1 / -1' }} onSubmit={(event) => void submitSubTaskDeadlineForm(event, item.id)}>
@@ -1166,7 +1185,7 @@ export function App(): ReactElement {
               </>
             ) : (
               <>
-                <button className="todo-check" onClick={() => void window.todoPet.todos.setSubTaskCompleted(item.id, sub.id, !sub.completed)}>{sub.completed ? <Check size={13} /> : <Circle size={13} />}</button>
+                <button className="todo-check" onClick={() => void window.todoPet.todos.setSubTaskCompleted(item.id, sub.id, !sub.completed).then(() => { if (!sub.completed) triggerCelebration(); })}>{sub.completed ? <Check size={13} /> : <Circle size={13} />}</button>
                 <div className="todo-copy">
                   <span>{sub.text}</span>
                   <div className="todo-copy-meta">
@@ -1468,7 +1487,12 @@ export function App(): ReactElement {
         style={{ width: 96 * petUiScale, height: 104 * petUiScale }}
       >
         {selectedPet ? (
-          <PetSprite pet={selectedPet} scale={petUiScale} state={petState} />
+          <>
+            <PetSprite pet={selectedPet} scale={petUiScale} state={petState} />
+            {celebration && (
+              <CelebrationBurst key={celebration.id} particles={celebration.particles} scale={petUiScale} />
+            )}
+          </>
         ) : (
           <div className="pet-placeholder">PET</div>
         )}
@@ -1490,6 +1514,28 @@ function getTagColor(tag: string): string {
     hash = Math.imul(hash ^ tag.charCodeAt(index), 0x45d9f3b);
   }
   return palette[Math.abs(hash) % palette.length];
+}
+
+function CelebrationBurst({ particles, scale }: { particles: CelebrationParticle[]; scale: number }): ReactElement {
+  return (
+    <div className="celebration-burst" aria-hidden="true">
+      <span className="celebration-ring" />
+      <span className="celebration-ring celebration-ring--late" />
+      {particles.map((particle, index) => {
+        const dx = Math.cos(particle.angle) * particle.distance * scale;
+        const dy = -Math.sin(particle.angle) * particle.distance * scale + 20 * scale;
+        const style = {
+          '--dx': `${dx.toFixed(1)}px`,
+          '--dy': `${dy.toFixed(1)}px`,
+          '--size': `${(particle.size * scale).toFixed(1)}px`,
+          '--delay': `${particle.delay.toFixed(0)}ms`,
+          '--rot': `${particle.rotation.toFixed(0)}deg`,
+          backgroundColor: particle.color
+        } as CSSProperties;
+        return <span key={index} className={`celebration-particle celebration-${particle.shape}`} style={style} />;
+      })}
+    </div>
+  );
 }
 
 function PetSprite({ pet, scale, state }: { pet: PetPackage; scale: number; state: PetState }): ReactElement {
