@@ -59,6 +59,7 @@ describe('schedule form helpers', () => {
       formatScheduleSummary({
         id: 'rule',
         kind: 'weekly',
+        target: 'todo',
         enabled: true,
         text: 'Daily',
         hour: 9,
@@ -76,6 +77,7 @@ describe('schedule form helpers', () => {
         {
           id: 'rule',
           kind: 'weekly',
+          target: 'todo',
           enabled: true,
           text: 'Daily',
           hour: 9,
@@ -98,6 +100,7 @@ describe('schedule form helpers', () => {
       formatScheduleSummary({
         id: 'rule',
         kind: 'one-time',
+        target: 'todo',
         enabled: true,
         text: 'Submit report',
         hour: 15,

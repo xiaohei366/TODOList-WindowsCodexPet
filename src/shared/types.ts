@@ -88,10 +88,12 @@ export type AnimationSpec = {
 };
 
 export type ScheduleKind = 'weekly' | 'one-time';
+export type ScheduleTarget = 'todo' | 'reminder';
 
 export type ScheduledTodoBase = {
   id: string;
   kind: ScheduleKind;
+  target: ScheduleTarget;
   enabled: boolean;
   text: string;
   hour: number;
@@ -117,6 +119,7 @@ export type ScheduledTodoRule = WeeklyScheduledTodoRule | OneTimeScheduledTodoRu
 
 export type ScheduledTodoInput = {
   kind: ScheduleKind;
+  target?: ScheduleTarget;
   enabled?: boolean;
   text: string;
   hour?: number | null;

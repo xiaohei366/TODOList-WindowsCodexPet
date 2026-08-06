@@ -1,4 +1,4 @@
-import type { PetPackage, ScheduledTodoInput, ScheduledTodoRule, SubTaskMenuAction, TodoItem, TodoMenuAction, TodoSubTask } from '../../shared/types';
+import type { PetPackage, ScheduledTodoInput, ScheduledTodoRule, ScheduleTarget, SubTaskMenuAction, TodoItem, TodoMenuAction, TodoSubTask } from '../../shared/types';
 import type { AppLanguage } from '../../shared/i18n';
 
 declare global {
@@ -51,7 +51,9 @@ declare global {
         showTodoMenu: (payload: { point: { x: number; y: number }; item: TodoItem }) => Promise<void>;
         showSubTaskMenu: (payload: { point: { x: number; y: number }; parentId: string; subTask: TodoSubTask }) => Promise<void>;
         onToggleTodoPanel: (listener: () => void) => () => void;
-        onToggleSchedulePanel: (listener: () => void) => () => void;
+        rendererReady: () => Promise<void>;
+        onToggleSchedulePanel: (listener: (target: ScheduleTarget) => void) => () => void;
+        onEnterTodoFocus: (listener: (id: string) => void) => () => void;
         onSelectPet: (listener: (id: string) => void) => () => void;
         onTodoAction: (listener: (action: TodoMenuAction) => void) => () => void;
         onSubTaskAction: (listener: (action: SubTaskMenuAction) => void) => () => void;

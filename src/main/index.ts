@@ -6,6 +6,7 @@ import {
   Menu,
   nativeImage,
   net,
+  Notification,
   protocol,
   screen,
   shell,
@@ -22,7 +23,7 @@ import { AppSettingsStore } from './appSettings';
 import { getNextScheduledRunDate, runDueScheduledTodos, ScheduledTodoStore } from './scheduledTodos';
 import { keepPetWindowOnTop, setPetWindowMousePassthrough } from './windowLayering';
 import { constrainWindowPosition, getWindowDragPosition, type Position, type Rect } from './windowBounds';
-import type { ImportResult, PetPackage, ScheduledTodoInput, TodoItem, TodoMenuAction, SubTaskMenuAction, TodoSubTask } from '../shared/types';
+import type { ImportResult, PetPackage, ScheduledTodoInput, ScheduleTarget, TodoItem, TodoMenuAction, SubTaskMenuAction, TodoSubTask } from '../shared/types';
 import { type AppLanguage, type I18nKey, defaultLanguage, languageOptions, normalizeLanguage, t } from '../shared/i18n';
 
 protocol.registerSchemesAsPrivileged([
@@ -45,6 +46,9 @@ let settingsStore: AppSettingsStore;
 let scheduledTodoTimer: NodeJS.Timeout | undefined;
 let petRegistry: PetRegistry;
 let currentLanguage: AppLanguage = defaultLanguage;
+let rendererReady = false;
+let pendingReminderFocusTodoId: string | undefined;
+const activeReminderNotifications = new Set<Notification>();
 const windowDragSessions = new WeakMap<BrowserWindow, { startBounds: Rect; startPointer: Position }>();
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -54,6 +58,7 @@ function getBundledAssetPath(fileName: string): string {
 }
 
 function createWindow(): void {
+  rendererReady = false;
   mainWindow = new BrowserWindow({
     width: 680,
     height: 720,
@@ -85,6 +90,7 @@ function createWindow(): void {
   }
 
   mainWindow.on('closed', () => {
+    rendererReady = false;
     mainWindow = undefined;
   });
   mainWindow.on('show', () => {
@@ -195,6 +201,54 @@ async function sendSchedulesChanged(): Promise<void> {
     return;
   }
   mainWindow.webContents.send('schedules:changed', await scheduledTodoStore.list());
+}
+
+function sendPendingReminderFocus(): void {
+  if (!pendingReminderFocusTodoId || !rendererReady || !mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+  mainWindow.webContents.send('ui:enterTodoFocus', pendingReminderFocusTodoId);
+  pendingReminderFocusTodoId = undefined;
+}
+
+function focusReminderTodo(todoId: string): void {
+  pendingReminderFocusTodoId = todoId;
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+  }
+  if (!mainWindow) {
+    return;
+  }
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+  mainWindow.focus();
+  keepPetWindowOnTop(mainWindow);
+  sendPendingReminderFocus();
+}
+
+function showScheduledReminder(todo: TodoItem): void {
+  focusReminderTodo(todo.id);
+  if (!Notification.isSupported()) {
+    return;
+  }
+
+  const notification = new Notification({
+    title: tr('reminder.notificationTitle'),
+    body: todo.text,
+    icon: getBundledAssetPath('icon.png')
+  });
+  activeReminderNotifications.add(notification);
+  const release = (): void => {
+    activeReminderNotifications.delete(notification);
+  };
+  notification.once('close', release);
+  notification.once('failed', release);
+  notification.on('click', () => focusReminderTodo(todo.id));
+  notification.show();
 }
 
 async function openTodoSource(): Promise<void> {
@@ -357,8 +411,17 @@ async function showPetMenu(point?: { x: number; y: number }): Promise<void> {
       click: () => mainWindow?.webContents.send('ui:toggleTodoPanel')
     },
     {
-      label: tr('menu.scheduledTodos'),
-      click: () => mainWindow?.webContents.send('ui:toggleSchedulePanel')
+      label: tr('menu.schedules'),
+      submenu: [
+        {
+          label: tr('menu.scheduledTodos'),
+          click: () => mainWindow?.webContents.send('ui:toggleSchedulePanel', 'todo' satisfies ScheduleTarget)
+        },
+        {
+          label: tr('menu.scheduledReminders'),
+          click: () => mainWindow?.webContents.send('ui:toggleSchedulePanel', 'reminder' satisfies ScheduleTarget)
+        }
+      ]
     },
     {
       label: tr('menu.language'),
@@ -669,6 +732,13 @@ function registerIpc(): void {
     await afterScheduleMutation(true);
     return rule;
   });
+  ipcMain.handle('ui:rendererReady', (event) => {
+    if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) {
+      return;
+    }
+    rendererReady = true;
+    sendPendingReminderFocus();
+  });
   ipcMain.handle('settings:getLanguage', () => currentLanguage);
   ipcMain.handle('settings:setLanguage', async (_event, language: AppLanguage) => setAppLanguage(language));
 
@@ -746,10 +816,21 @@ function registerIpc(): void {
 }
 
 async function runScheduledTodoCheck(): Promise<void> {
-  const generated = await runDueScheduledTodos(scheduledTodoStore, todoStore);
+  const reminders: TodoItem[] = [];
+  const generated = await runDueScheduledTodos(
+    scheduledTodoStore,
+    todoStore,
+    new Date(),
+    (rule, todo) => {
+      if (rule.target === 'reminder') {
+        reminders.push(todo as TodoItem);
+      }
+    }
+  );
   if (generated > 0) {
     await sendTodosChanged();
   }
+  reminders.forEach(showScheduledReminder);
   await sendSchedulesChanged();
 }
 
@@ -788,6 +869,7 @@ async function refreshScheduledTodoTimer(): Promise<void> {
 }
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
+app.setAppUserModelId('local.todolist.desktoppet');
 if (!gotSingleInstanceLock) {
   app.quit();
 }

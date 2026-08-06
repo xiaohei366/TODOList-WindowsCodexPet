@@ -37,6 +37,65 @@ describe('scheduled TODOs', () => {
     expect((await store.list())[0]).toMatchObject({ lastGeneratedDate: '2026-05-11' });
   });
 
+  test('preserves reminder rules and reports the generated TODO to the reminder listener', async () => {
+    const now = new Date(2026, 4, 11, 9, 30);
+    const store = new ScheduledTodoStore(file, () => now);
+    await store.create({
+      kind: 'weekly',
+      target: 'reminder',
+      enabled: true,
+      text: 'Stand up and stretch',
+      hour: 9,
+      minute: 30,
+      weekdays: [1]
+    });
+    const createdTodo = { id: 'todo-id', text: 'Stand up and stretch' };
+    const generated: Array<{ target: string; todo: unknown }> = [];
+
+    await expect(
+      runDueScheduledTodos(
+        store,
+        { add: async () => createdTodo },
+        now,
+        (rule, todo) => {
+          generated.push({ target: rule.target, todo });
+        }
+      )
+    ).resolves.toBe(1);
+
+    expect(generated).toEqual([{ target: 'reminder', todo: createdTodo }]);
+    expect((await store.list())[0]).toMatchObject({
+      target: 'reminder',
+      lastGeneratedDate: '2026-05-11'
+    });
+  });
+
+  test('loads legacy scheduled TODO rules without a target as regular TODO rules', async () => {
+    await writeFile(
+      file,
+      JSON.stringify({
+        version: 1,
+        rules: [
+          {
+            id: 'legacy-rule',
+            kind: 'weekly',
+            enabled: true,
+            text: 'Legacy task',
+            hour: 9,
+            minute: 30,
+            weekdays: [1],
+            createdAt: '2026-05-10T00:00:00.000Z',
+            updatedAt: '2026-05-10T00:00:00.000Z'
+          }
+        ]
+      }),
+      'utf8'
+    );
+
+    const store = new ScheduledTodoStore(file, () => new Date(2026, 4, 11, 9, 0));
+    expect((await store.list())[0]).toMatchObject({ id: 'legacy-rule', target: 'todo' });
+  });
+
   test('treats "N days to complete" with the firing day as day 1', async () => {
     const now = new Date(2026, 4, 11, 9, 30);
     const store = new ScheduledTodoStore(file, () => now);

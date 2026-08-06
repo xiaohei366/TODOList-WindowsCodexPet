@@ -17,11 +17,12 @@ Windows desktop pet TODO manager built with Electron, React, and TypeScript. It 
 - Motivational TODO header that rotates between "X tasks completed today" and "N tasks still due today" every few seconds. The completed count covers today's finished parent TODOs and sub-tasks. The remaining count works as follows: when a parent TODO is not yet completed and has a deadline on or before today, it counts as 1 plus all of its incomplete sub-tasks; otherwise the parent is not counted, and its sub-tasks are judged independently by their own deadline (only incomplete sub-tasks with a deadline on or before today are counted). Items without a deadline are not counted.
 - Automatic local-day refresh so yesterday's completed items disappear from the visible TODO panel after midnight.
 - Scheduled TODO rules for weekly recurring tasks and one-time future tasks.
+- Scheduled reminders reuse the scheduled TODO form, create a TODO when due, automatically enter its focus mode, and send a native Windows notification.
 - Scheduled rules are stored at `%APPDATA%\TOList\scheduled-todos.json`.
 - Switchable Chinese / English native menus and TODO panels from the pet right-click menu.
 - Hover the pet's bottom-right corner to reveal a resize handle; drag it to scale the pet and TODO panel between 65% and 200%.
 - Visible system tray icon with show/hide, open raw data file, and quick quit actions in the selected language.
-- Right-click pet actions for showing or hiding panels, switching language, managing scheduled TODOs, importing/exporting TODO items and scheduled tasks, importing pet zip packages, refreshing pets, switching pet styles, and quitting.
+- Right-click pet actions include a `Scheduled` parent menu with separate `Scheduled TODOs` and `Scheduled Reminders` panels, plus showing or hiding panels, switching language, importing/exporting data, importing pet zip packages, refreshing pets, switching pet styles, and quitting.
 - Right-click TODO actions use a native menu for editing, marking done, deleting, toggling the `[!]` red marker, adding/removing tags, adding notes/deadlines/sub-tasks, and moving priority up or down.
 - Tagged TODOs are grouped in Chrome/Edge-like colored tag groups that can be collapsed, expanded, and reordered against untagged TODOs. The tag editor offers a dropdown of existing tags from unfinished TODOs while still allowing custom tags.
 - Sub-tasks are stored under parent TODOs, can be collapsed with their parent, and must all be completed before the parent TODO can be marked done.
@@ -123,12 +124,13 @@ Rules:
 - Completed items use `[x]` and strikethrough.
 - Deleting a TODO removes its Markdown line.
 
-## Scheduled TODOs
+## Scheduling
 
-Right-click the pet and choose `定时 TODO` to manage automatic TODO creation.
+Right-click the pet and open `Scheduled`, then choose `Scheduled TODOs` or `Scheduled Reminders`. Both use the same weekly/one-time rule form.
 
 - Weekly rules can run on selected weekdays at a required hour and minute.
 - One-time rules can run on a specific future date at a required hour and minute, then remove themselves after generating the TODO.
+- A scheduled TODO creates the TODO in the background. A scheduled reminder also opens that TODO in focus mode and sends a native Windows notification; clicking the notification returns to the focused TODO.
 - New schedule forms default to the local date and time when the panel is opened.
 - Hours are limited to `0-23`, minutes to `0-59`, and dates must be real calendar dates such as February 28 or February 29 in leap years.
 - Weekdays are shown as numbers `1-7` in the compact picker.

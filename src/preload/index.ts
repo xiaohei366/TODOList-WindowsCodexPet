@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { PetPackage, ScheduledTodoInput, ScheduledTodoRule, SubTaskMenuAction, TodoItem, TodoMenuAction, TodoSubTask } from '../shared/types';
+import type { PetPackage, ScheduledTodoInput, ScheduledTodoRule, ScheduleTarget, SubTaskMenuAction, TodoItem, TodoMenuAction, TodoSubTask } from '../shared/types';
 import type { AppLanguage } from '../shared/i18n';
 
 type Listener<T> = (payload: T) => void;
@@ -64,7 +64,10 @@ contextBridge.exposeInMainWorld('todoPet', {
     showSubTaskMenu: (payload: { point: { x: number; y: number }; parentId: string; subTask: TodoSubTask }): Promise<void> =>
       ipcRenderer.invoke('ui:showSubTaskMenu', payload),
     onToggleTodoPanel: (listener: Listener<void>): (() => void) => onPayload('ui:toggleTodoPanel', listener),
-    onToggleSchedulePanel: (listener: Listener<void>): (() => void) => onPayload('ui:toggleSchedulePanel', listener),
+    rendererReady: (): Promise<void> => ipcRenderer.invoke('ui:rendererReady'),
+    onToggleSchedulePanel: (listener: Listener<ScheduleTarget>): (() => void) =>
+      onPayload('ui:toggleSchedulePanel', listener),
+    onEnterTodoFocus: (listener: Listener<string>): (() => void) => onPayload('ui:enterTodoFocus', listener),
     onSelectPet: (listener: Listener<string>): (() => void) => onPayload('ui:selectPet', listener),
     onTodoAction: (listener: Listener<TodoMenuAction>): (() => void) => onPayload('ui:todoAction', listener),
     onSubTaskAction: (listener: Listener<SubTaskMenuAction>): (() => void) => onPayload('ui:subTaskAction', listener)

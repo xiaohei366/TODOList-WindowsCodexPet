@@ -1,7 +1,7 @@
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
-import type { ImportResult, ScheduledTodoInput, ScheduledTodoRule } from '../shared/types';
+import type { ImportResult, ScheduledTodoInput, ScheduledTodoRule, ScheduleTarget } from '../shared/types';
 import { formatDateKey } from './todoStore';
 
 const scheduleDocumentVersion = 1;
@@ -15,6 +15,11 @@ type ScheduleDocument = {
 export type ScheduledTodoAdder = {
   add(text: string, deadline?: string): Promise<unknown>;
 };
+
+export type ScheduledTodoGeneratedListener = (
+  rule: ScheduledTodoRule,
+  todo: unknown
+) => void | Promise<void>;
 
 export class ScheduledTodoStore {
   constructor(
@@ -50,7 +55,8 @@ export class ScheduledTodoStore {
       createdAt: existing.createdAt,
       updatedAt: this.clock().toISOString(),
       lastGeneratedDate: existing.lastGeneratedDate,
-      fired: existing.kind === 'one-time' ? existing.fired : undefined
+      fired: existing.kind === 'one-time' ? existing.fired : undefined,
+      target: existing.target
     });
     document.rules = document.rules.map((rule) => (rule.id === id ? updated : rule));
     await this.writeDocument(document);
@@ -158,6 +164,7 @@ export class ScheduledTodoStore {
       updatedAt: string;
       lastGeneratedDate?: string;
       fired?: boolean;
+      target?: ScheduleTarget;
     }
   ): ScheduledTodoRule {
     const text = cleanScheduleText(input.text);
@@ -167,11 +174,13 @@ export class ScheduledTodoStore {
     const hour = normalizeTimePart(input.hour, 0, 23, '小时需为 0-23。');
     const minute = normalizeTimePart(input.minute, 0, 59, '分钟需为 0-59。');
     const deadlineDays = normalizeDeadlineDays(input.deadlineDays);
+    const target = normalizeScheduleTarget(input.target ?? metadata.target);
 
     if (input.kind === 'weekly') {
       return withoutUndefined({
         id: metadata.id,
         kind: 'weekly',
+        target,
         enabled: input.enabled ?? true,
         text,
         hour,
@@ -187,6 +196,7 @@ export class ScheduledTodoStore {
     return withoutUndefined({
       id: metadata.id,
       kind: 'one-time',
+      target,
       enabled: input.enabled ?? true,
       text,
       hour,
@@ -240,7 +250,8 @@ export class ScheduledTodoStore {
 export async function runDueScheduledTodos(
   store: ScheduledTodoStore,
   todoAdder: ScheduledTodoAdder,
-  now = new Date()
+  now = new Date(),
+  onGenerated?: ScheduledTodoGeneratedListener
 ): Promise<number> {
   const todayKey = formatDateKey(now);
   const currentMinute = now.getHours() * 60 + now.getMinutes();
@@ -263,12 +274,13 @@ export async function runDueScheduledTodos(
     const deadline = rule.deadlineDays
       ? formatDateKey(addDays(now, rule.deadlineDays - 1))
       : undefined;
-    await todoAdder.add(rule.text, deadline);
+    const todo = await todoAdder.add(rule.text, deadline);
     if (rule.kind === 'one-time') {
       await store.delete(rule.id);
     } else {
       await store.markGenerated(rule.id, todayKey);
     }
+    await onGenerated?.(rule, todo);
     generated += 1;
   }
 
@@ -325,6 +337,7 @@ function normalizeStoredRule(rule: ScheduledTodoRule): ScheduledTodoRule {
   }
   const base = {
     id: String(rule.id || randomUUID()),
+    target: normalizeScheduleTarget(rule.target),
     enabled: rule.enabled !== false,
     text: cleanScheduleText(rule.text),
     hour: normalizeTimePart(rule.hour, 0, 23, '小时需为 0-23。'),
@@ -424,8 +437,12 @@ function cleanScheduleText(text: string): string {
   return String(text ?? '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function normalizeScheduleTarget(target: ScheduleTarget | undefined): ScheduleTarget {
+  return target === 'reminder' ? 'reminder' : 'todo';
+}
+
 function semanticScheduleKey(rule: ScheduledTodoRule): string {
-  const base = [rule.kind, rule.text, String(rule.hour), String(rule.minute)];
+  const base = [rule.target, rule.kind, rule.text, String(rule.hour), String(rule.minute)];
   if (rule.kind === 'weekly') {
     base.push(rule.weekdays.join(','));
   } else {

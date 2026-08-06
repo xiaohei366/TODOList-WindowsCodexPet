@@ -1,6 +1,6 @@
 import { Check, ChevronDown, ChevronRight, Circle, Pencil, Plus, Power, Trash2, X } from 'lucide-react';
 import React, { FormEvent, PointerEvent, ReactElement, type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
-import type { PetPackage, PetState, ScheduledTodoInput, ScheduledTodoRule, SubTaskMenuAction, TodoItem, TodoMenuAction, TodoSubTask } from '../../shared/types';
+import type { PetPackage, PetState, ScheduledTodoInput, ScheduledTodoRule, ScheduleTarget, SubTaskMenuAction, TodoItem, TodoMenuAction, TodoSubTask } from '../../shared/types';
 import { type AppLanguage, type I18nKey, defaultLanguage, t } from '../../shared/i18n';
 import { getAnimationSpec, getInteractivePetState, getPetSpriteStyle, getTodoDrivenPetState } from './petAnimation';
 import { clampPetUiScale, defaultPetUiScale, getPetUiScaleFromResizeDrag } from './petScale';
@@ -47,7 +47,10 @@ export function App(): ReactElement {
   const [language, setLanguage] = useState<AppLanguage>(defaultLanguage);
   const [selectedPetId, setSelectedPetId] = useState<string>(() => localStorage.getItem(selectedPetStorageKey) ?? '');
   const [todoPanelVisible, setTodoPanelVisible] = useState(true);
-  const [schedulePanelVisible, setSchedulePanelVisible] = useState(false);
+  const [schedulePanel, setSchedulePanel] = useState<{ visible: boolean; target: ScheduleTarget }>({
+    visible: false,
+    target: 'todo'
+  });
   const [focusTarget, setFocusTarget] = useState<
     | { kind: 'todo'; id: string }
     | { kind: 'subtask'; parentId: string; subTaskId: string }
@@ -160,15 +163,19 @@ export function App(): ReactElement {
       }
     });
     const offToggleTodoPanel = window.todoPet.ui.onToggleTodoPanel(() => {
-      setSchedulePanelVisible(false);
+      setSchedulePanel((current) => ({ ...current, visible: false }));
       setTodoPanelVisible((visible) => !visible);
       setComposerOpen(false);
     });
-    const offToggleSchedulePanel = window.todoPet.ui.onToggleSchedulePanel(() => {
+    const offToggleSchedulePanel = window.todoPet.ui.onToggleSchedulePanel((target) => {
       setTodoPanelVisible(true);
-      setSchedulePanelVisible((visible) => !visible);
+      setSchedulePanel((current) => ({
+        target,
+        visible: !(current.visible && current.target === target)
+      }));
       setComposerOpen(false);
       setEditingTodo(null);
+      closeScheduleForm();
     });
     const offSelectPet = window.todoPet.ui.onSelectPet((id) => selectPet(id));
     return () => {
@@ -180,6 +187,19 @@ export function App(): ReactElement {
       offSelectPet();
     };
   }, [selectedPetId]);
+
+  useEffect(() => {
+    const offEnterTodoFocus = window.todoPet.ui.onEnterTodoFocus((id) => {
+      setTodoPanelVisible(true);
+      setSchedulePanel((current) => ({ ...current, visible: false }));
+      setComposerOpen(false);
+      setEditingTodo(null);
+      closeScheduleForm();
+      setFocusTarget({ kind: 'todo', id });
+    });
+    void window.todoPet.ui.rendererReady();
+    return offEnterTodoFocus;
+  }, []);
 
   useEffect(() => {
     const offTodoAction = window.todoPet.ui.onTodoAction(handleTodoMenuAction);
@@ -305,6 +325,10 @@ export function App(): ReactElement {
     return () => window.clearInterval(id);
   }, []);
   const todoUnits = useMemo(() => buildTodoListUnits(todos), [todos]);
+  const visibleSchedules = useMemo(
+    () => schedules.filter((rule) => rule.target === schedulePanel.target),
+    [schedules, schedulePanel.target]
+  );
   const existingActiveTags = useMemo(
     () => Array.from(new Set(todos.filter((item) => !item.completed && item.tag).map((item) => item.tag!))).sort(),
     [todos]
@@ -358,7 +382,10 @@ export function App(): ReactElement {
     event.preventDefault();
     let input: ScheduledTodoInput;
     try {
-      input = buildScheduleInput(scheduleForm, new Date(), language);
+      input = {
+        ...buildScheduleInput(scheduleForm, new Date(), language),
+        target: schedulePanel.target
+      };
     } catch (error) {
       setScheduleError((error as Error).message);
       return;
@@ -1207,22 +1234,28 @@ export function App(): ReactElement {
         </section>
       ) : (
         <>
-          {schedulePanelVisible ? (
+          {schedulePanel.visible ? (
         <section
           className="todo-panel schedule-panel"
-          aria-label={tr('schedule.aria')}
+          aria-label={tr(schedulePanel.target === 'reminder' ? 'schedule.reminderAria' : 'schedule.aria')}
           style={{ bottom: petBaseBottom + petBaseHeight * petUiScale + todoPetGap }}
         >
           <div className="todo-panel__top">
             <div className="todo-panel__heading">
-              <span className="todo-panel__title">{tr('schedule.title')}</span>
-              <span className="schedule-count">{tr('schedule.count', { count: schedules.length })}</span>
+              <span className="todo-panel__title">
+                {tr(schedulePanel.target === 'reminder' ? 'schedule.reminderTitle' : 'schedule.todoTitle')}
+              </span>
+              <span className="schedule-count">{tr('schedule.count', { count: visibleSchedules.length })}</span>
             </div>
             <div className="panel-actions">
               <button className="icon-button" title={tr('schedule.add')} onClick={openNewScheduleForm}>
                 <Plus size={16} />
               </button>
-              <button className="icon-button" title={tr('schedule.close')} onClick={() => setSchedulePanelVisible(false)}>
+              <button
+                className="icon-button"
+                title={tr('schedule.close')}
+                onClick={() => setSchedulePanel((current) => ({ ...current, visible: false }))}
+              >
                 <X size={16} />
               </button>
             </div>
@@ -1350,10 +1383,10 @@ export function App(): ReactElement {
           ) : null}
 
           <div className="schedule-list">
-            {schedules.length === 0 ? (
+            {visibleSchedules.length === 0 ? (
               <div className="empty-state">{tr('schedule.empty')}</div>
             ) : (
-              schedules.map((rule) => (
+              visibleSchedules.map((rule) => (
                 <article className={rule.enabled ? 'schedule-item' : 'schedule-item schedule-item--disabled'} key={rule.id}>
                   <div className="schedule-item__copy">
                     <span>{rule.text}</span>

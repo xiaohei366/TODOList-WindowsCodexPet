@@ -42,7 +42,9 @@ const zh = {
   'menu.quit': '退出',
   'menu.quitApp': '退出 TOList 桌宠',
   'menu.refreshPets': '刷新宠物',
+  'menu.schedules': '定时',
   'menu.scheduledTodos': '定时 TODO',
+  'menu.scheduledReminders': '定时提醒',
   'menu.showHide': '显示/隐藏',
   'menu.showHideTodoPanel': '显示/隐藏 TODO 面板',
   'menu.switchPet': '切换宠物风格',
@@ -64,6 +66,9 @@ const zh = {
   'schedule.save': '保存定时',
   'schedule.text': 'TODO 内容',
   'schedule.title': '定时',
+  'schedule.todoTitle': '定时 TODO',
+  'schedule.reminderTitle': '定时提醒',
+  'schedule.reminderAria': '定时提醒列表',
   'schedule.weekly': '每周',
   'schedule.weeklyPrefix': '每周',
   'schedule.year': '年',
@@ -108,7 +113,8 @@ const zh = {
   'focus.enter': '进入专注',
   'focus.exit': '退出',
   'focus.completed': '已完成',
-  'focus.blockedBySubTasks': '仍有子任务未完成，不可标注"已完成"'
+  'focus.blockedBySubTasks': '仍有子任务未完成，不可标注"已完成"',
+  'reminder.notificationTitle': '定时提醒'
 } as const;
 
 export type I18nKey = keyof typeof zh;
@@ -148,7 +154,9 @@ const en: Record<I18nKey, string> = {
   'menu.quit': 'Quit',
   'menu.quitApp': 'Quit TOList Desktop Pet',
   'menu.refreshPets': 'Refresh Pets',
+  'menu.schedules': 'Scheduled',
   'menu.scheduledTodos': 'Scheduled TODOs',
+  'menu.scheduledReminders': 'Scheduled Reminders',
   'menu.showHide': 'Show / Hide',
   'menu.showHideTodoPanel': 'Show / Hide TODO Panel',
   'menu.switchPet': 'Switch Pet',
@@ -170,6 +178,9 @@ const en: Record<I18nKey, string> = {
   'schedule.save': 'Save schedule',
   'schedule.text': 'TODO text',
   'schedule.title': 'Scheduled',
+  'schedule.todoTitle': 'Scheduled TODOs',
+  'schedule.reminderTitle': 'Scheduled Reminders',
+  'schedule.reminderAria': 'Scheduled reminder list',
   'schedule.weekly': 'Weekly',
   'schedule.weeklyPrefix': 'Weekly',
   'schedule.year': 'Year',
@@ -214,7 +225,8 @@ const en: Record<I18nKey, string> = {
   'focus.enter': 'Enter Focus',
   'focus.exit': 'Exit',
   'focus.completed': 'Completed',
-  'focus.blockedBySubTasks': 'Cannot mark as done: incomplete sub-tasks remain'
+  'focus.blockedBySubTasks': 'Cannot mark as done: incomplete sub-tasks remain',
+  'reminder.notificationTitle': 'Scheduled Reminder'
 };
 
 const translations: Record<AppLanguage, Record<I18nKey, string>> = {
