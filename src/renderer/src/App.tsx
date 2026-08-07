@@ -4,6 +4,7 @@ import type { PetPackage, PetState, ScheduledTodoInput, ScheduledTodoRule, Sched
 import { type AppLanguage, type I18nKey, defaultLanguage, t } from '../../shared/i18n';
 import { getAnimationSpec, getInteractivePetState, getPetSpriteStyle, getTodoDrivenPetState } from './petAnimation';
 import { createCelebrationParticles, type CelebrationParticle } from './completionCelebration';
+import { shouldEnterTodoFocus } from './focusEntry';
 import { clampPetUiScale, defaultPetUiScale, getPetUiScaleFromResizeDrag } from './petScale';
 import {
   buildDeadlineInput,
@@ -58,6 +59,10 @@ export function App(): ReactElement {
     | null
   >(null)
   const [focusToast, setFocusToast] = useState<string | null>(null)
+  const focusTargetRef = useRef(focusTarget);
+  focusTargetRef.current = focusTarget;
+  const todosRef = useRef(todos);
+  todosRef.current = todos;
   const [composerOpen, setComposerOpen] = useState(false);
   const [scheduleFormOpen, setScheduleFormOpen] = useState(false);
   const [newTodoText, setNewTodoText] = useState('');
@@ -192,13 +197,17 @@ export function App(): ReactElement {
   }, [selectedPetId]);
 
   useEffect(() => {
-    const offEnterTodoFocus = window.todoPet.ui.onEnterTodoFocus((id) => {
+    const offEnterTodoFocus = window.todoPet.ui.onEnterTodoFocus((payload) => {
+      const todoExists = todosRef.current.some((item) => item.id === payload.id);
+      if (!shouldEnterTodoFocus(payload, focusTargetRef.current !== null, todoExists)) {
+        return;
+      }
       setTodoPanelVisible(true);
       setSchedulePanel((current) => ({ ...current, visible: false }));
       setComposerOpen(false);
       setEditingTodo(null);
       closeScheduleForm();
-      setFocusTarget({ kind: 'todo', id });
+      setFocusTarget({ kind: 'todo', id: payload.id });
     });
     void window.todoPet.ui.rendererReady();
     return offEnterTodoFocus;

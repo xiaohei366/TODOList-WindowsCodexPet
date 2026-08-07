@@ -49,7 +49,7 @@ let aiApiServer: AiApiServer | null = null;
 let petRegistry: PetRegistry;
 let currentLanguage: AppLanguage = defaultLanguage;
 let rendererReady = false;
-let pendingReminderFocusTodoId: string | undefined;
+let pendingReminderFocus: { id: string; force: boolean } | undefined;
 const activeReminderNotifications = new Set<Notification>();
 const windowDragSessions = new WeakMap<BrowserWindow, { startBounds: Rect; startPointer: Position }>();
 
@@ -206,15 +206,15 @@ async function sendSchedulesChanged(): Promise<void> {
 }
 
 function sendPendingReminderFocus(): void {
-  if (!pendingReminderFocusTodoId || !rendererReady || !mainWindow || mainWindow.isDestroyed()) {
+  if (!pendingReminderFocus || !rendererReady || !mainWindow || mainWindow.isDestroyed()) {
     return;
   }
-  mainWindow.webContents.send('ui:enterTodoFocus', pendingReminderFocusTodoId);
-  pendingReminderFocusTodoId = undefined;
+  mainWindow.webContents.send('ui:enterTodoFocus', pendingReminderFocus);
+  pendingReminderFocus = undefined;
 }
 
-function focusReminderTodo(todoId: string): void {
-  pendingReminderFocusTodoId = todoId;
+function focusReminderTodo(todoId: string, force = false): void {
+  pendingReminderFocus = { id: todoId, force };
   if (!mainWindow || mainWindow.isDestroyed()) {
     createWindow();
   }
@@ -249,7 +249,7 @@ function showScheduledReminder(todo: TodoItem): void {
   };
   notification.once('close', release);
   notification.once('failed', release);
-  notification.on('click', () => focusReminderTodo(todo.id));
+  notification.on('click', () => focusReminderTodo(todo.id, true));
   notification.show();
 }
 

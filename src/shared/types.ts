@@ -132,6 +132,12 @@ export type ScheduledTodoInput = {
   deadlineDays?: number | null;
 };
 
+/** Payload for ui:enterTodoFocus. force=true (notification click) overrides an active focus session. */
+export type EnterTodoFocusPayload = {
+  id: string;
+  force?: boolean;
+};
+
 export type ImportResult = {
   added: number;
   updated?: number;
