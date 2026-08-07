@@ -52,7 +52,7 @@ TOList 桌宠（Electron 桌面应用）在运行时内置了一个只监听 `12
   "target": "todo",              // "todo" 到点生成 TODO | "reminder" 到点弹系统通知
   "text": "站起来活动一下",       // 必填
   "hour": 10, "minute": 30,      // 触发时间
-  "weekdays": [1, 3, 5],         // 仅 weekly：0=周日 … 6=周六
+  "weekdays": [1, 3, 5],         // 仅 weekly：ISO 8601 编码，1=周一 … 6=周六、7=周日
   "date": "2026-08-10",          // 仅 one-time：YYYY-MM-DD（也可用 year/month/day 数字）
   "deadlineDays": 3,             // 可选：生成的 TODO 截止日期=生成当天起第 N 天
   "enabled": true                // 可选，默认 true
