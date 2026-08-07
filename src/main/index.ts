@@ -21,6 +21,7 @@ import { PetRegistry } from './petRegistry';
 import { getAppPaths } from './paths';
 import { AppSettingsStore } from './appSettings';
 import { getNextScheduledRunDate, runDueScheduledTodos, ScheduledTodoStore } from './scheduledTodos';
+import { startAiApiServer, type AiApiServer } from './aiApi';
 import { keepPetWindowOnTop, setPetWindowMousePassthrough } from './windowLayering';
 import { constrainWindowPosition, getWindowDragPosition, type Position, type Rect } from './windowBounds';
 import type { ImportResult, PetPackage, ScheduledTodoInput, ScheduleTarget, TodoItem, TodoMenuAction, SubTaskMenuAction, TodoSubTask } from '../shared/types';
@@ -44,6 +45,7 @@ let todoStore: TodoMarkdownStore;
 let scheduledTodoStore: ScheduledTodoStore;
 let settingsStore: AppSettingsStore;
 let scheduledTodoTimer: NodeJS.Timeout | undefined;
+let aiApiServer: AiApiServer | null = null;
 let petRegistry: PetRegistry;
 let currentLanguage: AppLanguage = defaultLanguage;
 let rendererReady = false;
@@ -890,7 +892,10 @@ app.on('second-instance', () => {
   keepPetWindowOnTop(mainWindow);
 });
 
-app.whenReady().then(async () => {
+// 只有拿到单实例锁的实例才执行启动流程；锁失败的实例在上方已 app.quit()，
+// 但 quit 不会取消已注册的 whenReady 回调，必须在这里显式拦住，
+// 否则第二个实例会照常跑启动逻辑（如重写 AI API 发现文件）再退出。
+if (gotSingleInstanceLock) app.whenReady().then(async () => {
   const paths = getAppPaths();
   todoStore = new TodoMarkdownStore(paths.todoFile);
   scheduledTodoStore = new ScheduledTodoStore(paths.scheduledTodosFile);
@@ -904,6 +909,17 @@ app.whenReady().then(async () => {
 
   registerPetProtocol();
   registerIpc();
+  try {
+    aiApiServer = await startAiApiServer({
+      todoStore,
+      scheduleStore: scheduledTodoStore,
+      onTodosChanged: sendTodosChanged,
+      onSchedulesChanged: afterScheduleMutation,
+      infoFile: paths.aiApiInfoFile
+    });
+  } catch (error) {
+    console.error('AI API 启动失败：', error);
+  }
   createWindow();
   createTray();
   await startTodoWatch();
@@ -914,6 +930,7 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {});
 
 app.on('before-quit', () => {
+  void aiApiServer?.close();
   todoWatch?.close();
   if (scheduledTodoTimer) {
     clearTimeout(scheduledTodoTimer);

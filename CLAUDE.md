@@ -32,6 +32,7 @@ This is an **Electron 39** desktop app (frameless, transparent, always-on-top) w
 - **Scheduled TODOs**: `src/main/scheduledTodos.ts` — JSON persistence at `%APPDATA%\TOList\scheduled-todos.json`. A timer fires at the next due time to auto-generate TODOs from weekly/one-time rules.
 - **Pet registry**: `src/main/petRegistry.ts` — discovers pets from `.codex/pets`, `%APPDATA%\TOList\pets`, and npm-installed pet-packages. Serves spritesheets via a custom `todolist-pet://` protocol.
 - **App settings**: `src/main/appSettings.ts` — JSON at `%APPDATA%\TOList\settings.json` (language preference).
+- **AI API**: `src/main/aiApi.ts` — localhost-only (`127.0.0.1`) HTTP API for external AI tools to manage TODOs and scheduled rules. Per-startup token; discovery file at `%APPDATA%\TOList\ai-api.json`. Usage doc: `docs/ai-api/SKILL.md`.
 - **IPC**: All renderer↔main communication goes through `ipcMain.handle` / `ipcRenderer.invoke`. The preload exposes typed methods under `window.todoPet.*`.
 - **Single instance**: `app.requestSingleInstanceLock()` prevents duplicate processes; `second-instance` event restores the existing window.
 
