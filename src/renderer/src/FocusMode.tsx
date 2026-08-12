@@ -7,6 +7,8 @@ export type FocusModeProps = {
   completedLabel: string;
   exitLabel: string;
   toastMessage: string | null;
+  queueCount?: number;
+  queuedLabel?: string;
   onToggleCompleted: () => void;
   onExit: () => void;
 };
@@ -15,7 +17,7 @@ const MAX_FONT_SIZE = 22;
 const MIN_FONT_SIZE = 12;
 
 export function FocusMode(props: FocusModeProps): ReactElement {
-  const { text, completed, completedLabel, exitLabel, toastMessage, onToggleCompleted, onExit } = props;
+  const { text, completed, completedLabel, exitLabel, toastMessage, queueCount, queuedLabel, onToggleCompleted, onExit } = props;
   const textRef = useRef<HTMLParagraphElement | null>(null);
 
   useEffect(() => {
@@ -53,6 +55,10 @@ export function FocusMode(props: FocusModeProps): ReactElement {
           {text}
         </p>
       </div>
+
+      {queueCount && queueCount > 0 && queuedLabel ? (
+        <p className="focus-panel__queue" role="status">{queuedLabel}</p>
+      ) : null}
 
       <div className="focus-panel__buttons">
         {toastMessage ? (

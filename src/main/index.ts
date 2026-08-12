@@ -49,7 +49,7 @@ let aiApiServer: AiApiServer | null = null;
 let petRegistry: PetRegistry;
 let currentLanguage: AppLanguage = defaultLanguage;
 let rendererReady = false;
-let pendingReminderFocus: { id: string; force: boolean } | undefined;
+let pendingReminderQueue: { id: string; force: boolean }[] = [];
 const activeReminderNotifications = new Set<Notification>();
 const windowDragSessions = new WeakMap<BrowserWindow, { startBounds: Rect; startPointer: Position }>();
 
@@ -206,15 +206,17 @@ async function sendSchedulesChanged(): Promise<void> {
 }
 
 function sendPendingReminderFocus(): void {
-  if (!pendingReminderFocus || !rendererReady || !mainWindow || mainWindow.isDestroyed()) {
+  if (pendingReminderQueue.length === 0 || !rendererReady || !mainWindow || mainWindow.isDestroyed()) {
     return;
   }
-  mainWindow.webContents.send('ui:enterTodoFocus', pendingReminderFocus);
-  pendingReminderFocus = undefined;
+  for (const item of pendingReminderQueue) {
+    mainWindow.webContents.send('ui:enterTodoFocus', item);
+  }
+  pendingReminderQueue = [];
 }
 
 function focusReminderTodo(todoId: string, force = false): void {
-  pendingReminderFocus = { id: todoId, force };
+  pendingReminderQueue.push({ id: todoId, force });
   if (!mainWindow || mainWindow.isDestroyed()) {
     createWindow();
   }

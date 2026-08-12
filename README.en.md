@@ -17,7 +17,7 @@ Windows desktop pet TODO manager built with Electron, React, and TypeScript. It 
 - Motivational TODO header that rotates between "X tasks completed today" and "N tasks still due today" every few seconds. The completed count covers today's finished parent TODOs and sub-tasks. The remaining count works as follows: when a parent TODO is not yet completed and has a deadline on or before today, it counts as 1 plus all of its incomplete sub-tasks; otherwise the parent is not counted, and its sub-tasks are judged independently by their own deadline (only incomplete sub-tasks with a deadline on or before today are counted). Items without a deadline are not counted.
 - Automatic local-day refresh so yesterday's completed items disappear from the visible TODO panel after midnight.
 - Scheduled TODO rules for weekly recurring tasks and one-time future tasks.
-- Scheduled reminders reuse the scheduled TODO form, create a TODO when due, automatically enter its focus mode, and send a native Windows notification.
+- Scheduled reminders reuse the scheduled TODO form, create a TODO when due, automatically enter its focus mode, and send a native Windows notification. If another task is already focused, the reminder queues up and enters focus once the current one exits or completes.
 - Scheduled rules are stored at `%APPDATA%\TOList\scheduled-todos.json`.
 - Switchable Chinese / English native menus and TODO panels from the pet right-click menu.
 - Hover the pet's bottom-right corner to reveal a resize handle; drag it to scale the pet and TODO panel between 65% and 200%.
@@ -130,7 +130,7 @@ Right-click the pet and open `Scheduled`, then choose `Scheduled TODOs` or `Sche
 
 - Weekly rules can run on selected weekdays at a required hour and minute.
 - One-time rules can run on a specific future date at a required hour and minute, then remove themselves after generating the TODO.
-- A scheduled TODO creates the TODO in the background. A scheduled reminder also opens that TODO in focus mode and sends a native Windows notification; clicking the notification returns to the focused TODO.
+- A scheduled TODO creates the TODO in the background. A scheduled reminder also opens that TODO in focus mode and sends a native Windows notification; clicking the notification returns to the focused TODO. If a reminder fires while another task is focused, it queues and automatically enters focus after the current one exits or completes; the focus panel shows how many tasks are queued.
 - New schedule forms default to the local date and time when the panel is opened.
 - Hours are limited to `0-23`, minutes to `0-59`, and dates must be real calendar dates such as February 28 or February 29 in leap years.
 - Weekdays are shown as numbers `1-7` in the compact picker.

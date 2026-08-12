@@ -114,6 +114,7 @@ const zh = {
   'focus.exit': '退出',
   'focus.completed': '已完成',
   'focus.blockedBySubTasks': '仍有子任务未完成，不可标注"已完成"',
+  'focus.queuedCount': '排队中：还有 {count} 个任务待专注',
   'reminder.notificationTitle': '定时提醒'
 } as const;
 
@@ -226,6 +227,7 @@ const en: Record<I18nKey, string> = {
   'focus.exit': 'Exit',
   'focus.completed': 'Completed',
   'focus.blockedBySubTasks': 'Cannot mark as done: incomplete sub-tasks remain',
+  'focus.queuedCount': 'Queued: {count} more task(s) waiting',
   'reminder.notificationTitle': 'Scheduled Reminder'
 };
 

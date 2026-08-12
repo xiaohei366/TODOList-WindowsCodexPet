@@ -4,7 +4,7 @@ import type { PetPackage, PetState, ScheduledTodoInput, ScheduledTodoRule, Sched
 import { type AppLanguage, type I18nKey, defaultLanguage, t } from '../../shared/i18n';
 import { getAnimationSpec, getInteractivePetState, getPetSpriteStyle, getTodoDrivenPetState } from './petAnimation';
 import { createCelebrationParticles, type CelebrationParticle } from './completionCelebration';
-import { shouldEnterTodoFocus } from './focusEntry';
+import { applyEnterFocusRequest, isFocusTargetValid, type FocusTarget } from './focusEntry';
 import { clampPetUiScale, defaultPetUiScale, getPetUiScaleFromResizeDrag } from './petScale';
 import {
   buildDeadlineInput,
@@ -53,14 +53,13 @@ export function App(): ReactElement {
     visible: false,
     target: 'todo'
   });
-  const [focusTarget, setFocusTarget] = useState<
-    | { kind: 'todo'; id: string }
-    | { kind: 'subtask'; parentId: string; subTaskId: string }
-    | null
-  >(null)
+  const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null)
   const [focusToast, setFocusToast] = useState<string | null>(null)
+  const [focusQueue, setFocusQueue] = useState<FocusTarget[]>([])
   const focusTargetRef = useRef(focusTarget);
   focusTargetRef.current = focusTarget;
+  const focusQueueRef = useRef(focusQueue);
+  focusQueueRef.current = focusQueue;
   const todosRef = useRef(todos);
   todosRef.current = todos;
   const [composerOpen, setComposerOpen] = useState(false);
@@ -199,15 +198,19 @@ export function App(): ReactElement {
   useEffect(() => {
     const offEnterTodoFocus = window.todoPet.ui.onEnterTodoFocus((payload) => {
       const todoExists = todosRef.current.some((item) => item.id === payload.id);
-      if (!shouldEnterTodoFocus(payload, focusTargetRef.current !== null, todoExists)) {
-        return;
+      const next = applyEnterFocusRequest(
+        { current: focusTargetRef.current, queue: focusQueueRef.current },
+        { target: { kind: 'todo', id: payload.id }, force: payload.force, exists: todoExists }
+      );
+      setFocusQueue(next.queue);
+      if (next.current !== focusTargetRef.current) {
+        setTodoPanelVisible(true);
+        setSchedulePanel((current) => ({ ...current, visible: false }));
+        setComposerOpen(false);
+        setEditingTodo(null);
+        closeScheduleForm();
+        setFocusTarget(next.current);
       }
-      setTodoPanelVisible(true);
-      setSchedulePanel((current) => ({ ...current, visible: false }));
-      setComposerOpen(false);
-      setEditingTodo(null);
-      closeScheduleForm();
-      setFocusTarget({ kind: 'todo', id: payload.id });
     });
     void window.todoPet.ui.rendererReady();
     return offEnterTodoFocus;
@@ -695,6 +698,38 @@ export function App(): ReactElement {
     const timer = setTimeout(() => setFocusToast(null), 3000)
     return () => clearTimeout(timer)
   }, [focusToast])
+
+  // Blocking focus queue: when the focus panel closes (exit/complete) and
+  // reminders are still queued, advance to the next still-valid target,
+  // skipping any deleted or completed while waiting.
+  useEffect(() => {
+    if (focusTarget !== null || focusQueue.length === 0) return;
+    let idx = 0;
+    while (idx < focusQueue.length && !isFocusTargetValid(focusQueue[idx], todos)) {
+      idx += 1;
+    }
+    if (idx >= focusQueue.length) {
+      setFocusQueue([]);
+      return;
+    }
+    const nextTarget = focusQueue[idx];
+    setFocusQueue(focusQueue.filter((_, i) => i !== idx));
+    setFocusToast(null);
+    setTodoPanelVisible(true);
+    setSchedulePanel((current) => ({ ...current, visible: false }));
+    setComposerOpen(false);
+    setEditingTodo(null);
+    closeScheduleForm();
+    setFocusTarget(nextTarget);
+  }, [focusTarget, focusQueue, todos]);
+
+  // If the focused target disappears (deleted/completed elsewhere), drop it so
+  // the queue can advance.
+  useEffect(() => {
+    if (focusTarget && !focusData) {
+      setFocusTarget(null);
+    }
+  }, [focusTarget, focusData]);
 
   function handleFocusToggleCompleted(): void {
     if (!focusTarget) return
@@ -1256,6 +1291,8 @@ export function App(): ReactElement {
             completedLabel={tr('focus.completed')}
             exitLabel={tr('focus.exit')}
             toastMessage={focusToast}
+            queueCount={focusQueue.length}
+            queuedLabel={tr('focus.queuedCount', { count: focusQueue.length })}
             onToggleCompleted={handleFocusToggleCompleted}
             onExit={() => setFocusTarget(null)}
           />
