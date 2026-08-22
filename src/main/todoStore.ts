@@ -30,6 +30,7 @@ export function selectVisibleTodos(items: TodoItem[], todayKey: string): TodoIte
 export function parseTodoMarkdown(content: string, todayKey: string): ParsedTodo[] {
   const lines = content.split(/\r?\n/);
   const items: ParsedTodo[] = [];
+  const occurrenceCounts = new Map<string, number>();
   let currentDate: string | undefined;
 
   let index = 0;
@@ -57,6 +58,10 @@ export function parseTodoMarkdown(content: string, todayKey: string): ParsedTodo
     const parsed = parseTodoBody(todo[2], completed);
     const sourceLine = index + 1;
     const order = items.length;
+    const occurrenceKey = `${currentDate}\0${parsed.text}`;
+    const occurrence = occurrenceCounts.get(occurrenceKey) ?? 0;
+    occurrenceCounts.set(occurrenceKey, occurrence + 1);
+    const todoId = createTodoId(currentDate, occurrence, parsed.text);
 
     // Collect sub-task lines (indented checkbox: "  - [ ] xxx" / "  - [x] xxx")
     const subTasks: TodoSubTask[] = [];
@@ -67,7 +72,7 @@ export function parseTodoMarkdown(content: string, todayKey: string): ParsedTodo
         const subCompleted = subMatch[1].toLowerCase() === 'x';
         const subParsed = parseTodoBody(subMatch[2], subCompleted);
         subTasks.push({
-          id: `${createTodoId(currentDate, sourceLine, parsed.text, completed, parsed.highlighted)}::${subTasks.length}`,
+          id: `${todoId}::${subTasks.length}`,
           text: subParsed.text,
           completed: subCompleted,
           completedDate: subParsed.completedDate,
@@ -94,7 +99,7 @@ export function parseTodoMarkdown(content: string, todayKey: string): ParsedTodo
     }
 
     items.push({
-      id: createTodoId(currentDate, sourceLine, parsed.text, completed, parsed.highlighted),
+      id: todoId,
       date: currentDate,
       text: parsed.text,
       completed,
@@ -700,14 +705,14 @@ function weekdayName(dateKey: string): string {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date(year, month - 1, day));
 }
 
-function createTodoId(
-  date: string,
-  sourceLine: number,
-  text: string,
-  completed: boolean,
-  highlighted: boolean
-): string {
-  return `${date}:${sourceLine}:${hash(`${date}\0${sourceLine}\0${text}\0${completed}\0${highlighted}`)}`;
+// IDs must stay stable across rewrites: completing a todo moves it to the end
+// of its day section (shifting every sourceLine below it), and toggling
+// completed/highlighted mutates the item itself. The positional discriminator
+// is therefore a per-(date, text) occurrence index in file order, and mutable
+// flags are excluded from the hash. In-memory holders of ids (e.g. the focus
+// queue in the renderer) rely on this stability.
+function createTodoId(date: string, occurrence: number, text: string): string {
+  return `${date}:${occurrence}:${hash(`${date}\0${occurrence}\0${text}`)}`;
 }
 
 function hash(value: string): string {

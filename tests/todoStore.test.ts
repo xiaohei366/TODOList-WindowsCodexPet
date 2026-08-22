@@ -276,4 +276,55 @@ describe('TodoMarkdownStore', () => {
       ['Imported done', 'Keep me', 'New imported'].sort()
     );
   });
+
+  test('keeps todo ids stable when completing a todo above them (focus queue scenario)', async () => {
+    const store = new TodoMarkdownStore(file, () => today);
+    const first = await store.add('First');
+    const second = await store.add('Second');
+    const third = await store.add('Third');
+
+    await store.setCompleted(first.id, true);
+    const afterFirst = await store.list();
+    const secondId = afterFirst.find((item) => item.text === 'Second')!.id;
+    const thirdId = afterFirst.find((item) => item.text === 'Third')!.id;
+    expect(secondId).toBe(second.id);
+    expect(thirdId).toBe(third.id);
+
+    await store.setCompleted(secondId, true);
+    const afterSecond = await store.list();
+    expect(afterSecond.find((item) => item.text === 'Third')!.id).toBe(third.id);
+  });
+
+  test('keeps a todo id stable when toggling its highlight and completion flags', async () => {
+    const store = new TodoMarkdownStore(file, () => today);
+    const item = await store.add('Stable id');
+    const other = await store.add('Other');
+
+    await store.setHighlighted(item.id, true);
+    const highlighted = (await store.list()).find((entry) => entry.text === 'Stable id')!;
+    expect(highlighted.id).toBe(item.id);
+
+    const completed = await store.setCompleted(highlighted.id, true);
+    expect(completed.id).toBe(item.id);
+    const reopened = await store.setCompleted(completed.id, false);
+    expect(reopened.id).toBe(item.id);
+    expect((await store.list()).find((entry) => entry.text === 'Other')!.id).toBe(other.id);
+  });
+
+  test('keeps existing todo ids stable when adding new todos', async () => {
+    const store = new TodoMarkdownStore(file, () => today);
+    const first = await store.add('First');
+    await store.add('Second');
+
+    const visible = await store.list();
+    expect(visible.find((item) => item.text === 'First')!.id).toBe(first.id);
+  });
+
+  test('assigns distinct ids to duplicate todos with the same text on one day', async () => {
+    const store = new TodoMarkdownStore(file, () => today);
+    const first = await store.add('Same text');
+    const second = await store.add('Same text');
+
+    expect(first.id).not.toBe(second.id);
+  });
 });
