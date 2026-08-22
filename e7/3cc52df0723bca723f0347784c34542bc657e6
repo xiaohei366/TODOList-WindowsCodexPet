@@ -1,0 +1,38 @@
+tests/todoStore.test.ts
+  s_5e26079fbe7536::t_a248d1c9386726 279-329
+src/main/todoStore.ts
+  s_5e26079fbe7536::t_831b2bf782266f 75
+  s_5e26079fbe7536::t_5b50f7e18aa206 102
+  s_5e26079fbe7536::t_6784cf5eebec05 33
+  s_5e26079fbe7536::t_26b470bbdf5acd 708-715
+  s_5e26079fbe7536::t_6661fffa69e204 61-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "e73cc52df0723bca723f0347784c34542bc657e6",
+  "prompts": {},
+  "sessions": {
+    "s_5e26079fbe7536": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a88fd89928d259744c59b89",
+        "model": "glm-5.3"
+      },
+      "human_author": "xiaohei366 <xiaohei366@users.noreply.github.com>",
+      "custom_attributes": {
+        "dedupe_key": "6a88fd89928d259744c59b89:6a89003d928d259744c59cb2:afterEdit:8cc13714",
+        "tool_use_id": "6a89003d928d259744c59cb2",
+        "client_type": "ide",
+        "session_id": "6a88fd89928d259744c59b89",
+        "external_session_id": "6a88fd89928d259744c59b89",
+        "operation_id": "6a89003d928d259744c59cb2",
+        "edit_kind": "file_edit",
+        "source_scene": "agent",
+        "runtime_client": "trae-tob-git-ai",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "tool_type": "builtin"
+      }
+    }
+  }
+}
